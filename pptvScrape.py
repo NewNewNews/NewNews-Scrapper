@@ -1,11 +1,12 @@
 import json
 import re
+from exceptiongroup import catch
 import requests
 import urllib.parse
 from bs4 import BeautifulSoup as bs
 
-xmlUrl = "https://www.pptvhd36.com/sitemap-2024-09-14.xml"
-JSON_output = "data/pptv14092024"
+xmlUrl = "https://www.pptvhd36.com/sitemap-2024-09-15.xml"
+JSON_output = "data/pptv15092024"
 
 headers = {
     "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/117.0"
@@ -27,7 +28,7 @@ def CreateNewsElement(url):
     soup = bs(res.text, 'html.parser')
     date = soup.find("time")
     if (date == None):
-        date = "14 ก.ย. 2567"
+        date = "15 ก.ย. 2567"
     else:
         date = date.getText()
 
@@ -56,4 +57,7 @@ for e in allURLsSoup:
     allURLs.append(url)
 
 for news in allURLs:
-    CreateNewsElement(news)
+    try:
+        CreateNewsElement(news)
+    except (err):
+        continue

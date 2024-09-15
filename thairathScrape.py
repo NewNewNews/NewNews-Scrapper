@@ -4,7 +4,7 @@ import requests
 from bs4 import BeautifulSoup as bs
 
 xmlUrl = "https://www.thairath.co.th/sitemap-daily.xml"
-JSON_output = "data/thairath14092024"
+JSON_output = "data/thairath15092024"
 
 def CreateNewsElement(url):
     category = url.split("/")[3:]
@@ -17,7 +17,7 @@ def CreateNewsElement(url):
     soup = bs(res.text, 'html.parser')
     date = soup.find("div", class_=re.compile(r"__item_article-date.*\bcss\b"))
     if (date == None):
-        date = "14 ก.ย. 2567"
+        date = "15 ก.ย. 2567"
     else:
         date = date.getText()
 
