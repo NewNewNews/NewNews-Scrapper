@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package news;
+
+option go_package = "github.com/yourusername/gateway/internal/proto";
+
+service NewsService {
+  rpc GetNews(GetNewsRequest) returns (GetNewsResponse) {}
+  rpc ScrapeNews(ScrapeNewsRequest) returns (ScrapeNewsResponse) {}
+}
+
+message GetNewsRequest {
+  string category = 1;
+  string date = 2;
+}
+
+message GetNewsResponse {
+  repeated NewsItem news = 1;
+}
+
+message ScrapeNewsRequest {
+  string url = 1;
+}
+
+message ScrapeNewsResponse {
+  bool success = 1;
+}
+
+message NewsItem {
+  string data = 1;
+  string category = 2;
+  string date = 3;
+  string publisher = 4;
+  string url = 5;
+}
