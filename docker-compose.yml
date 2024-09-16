@@ -1,28 +1,28 @@
 version: "3.8"
 services:
-  gateway:
-    build: .
-    ports:
-      - "8080:8080"
-    depends_on:
-      - db
-      - news_service
-    environment:
-      - DATABASE_URL=postgresql://user:password@db:5432/gateway?schema=public
+  # gateway:
+  #   build: .
+  #   ports:
+  #     - "8080:8080"
+  #   depends_on:
+  #     - db
+  #     - news_service
+  #   environment:
+  #     - DATABASE_URL=postgresql://user:password@db:5432/gateway?schema=public
 
-  db:
-    image: postgres:13
-    environment:
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=gateway
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+  # db:
+  #   image: postgres:13
+  #   environment:
+  #     - POSTGRES_USER=user
+  #     - POSTGRES_PASSWORD=password
+  #     - POSTGRES_DB=gateway
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
 
   news_service:
     build:
       context: .
-      dockerfile: Dockerfile.news_service
+      dockerfile: Dockerfile
     depends_on:
       - mongodb
       - kafka
@@ -53,5 +53,5 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
 volumes:
-  postgres_data:
+  # postgres_data:
   mongodb_data:
