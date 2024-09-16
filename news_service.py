@@ -11,7 +11,9 @@ from proto import news_service_pb2_grpc
 
 class NewsService(news_service_pb2_grpc.NewsServiceServicer):
     def __init__(self):
-        self.mongo_client = MongoClient("mongodb://mongodb:27017/")
+        self.mongo_client = MongoClient(
+            "mongodb://localhost:27017/"
+        )  # mongodb://mongodb:27017/
         self.db = self.mongo_client["news_db"]
         self.collection = self.db["news"]
         self.kafka_producer = KafkaProducer(
@@ -49,47 +51,66 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
         headers = {"User-Agent": "Mozilla/5.0"}
         res = requests.get(url, headers=headers)
         soup = bs(res.text, "html.parser")
-        allSoup = soup.select("url")
-        print(type(allSoup))
-        tmp = allSoup[1].find("loc").text
-        # Extract category
-        try:
-            category = (
-                tmp.find("div", {"data-elementor-type": "single-post"})
-                .find("nav", recursive=False)
-                .find("div")
-                .find("div")
-                .find_all("a")[-1]
-                .text
-            )
-        except Exception as e:
-            print(f"Failed to extract category: {str(e)}")
-            # return
-        # Extract content
 
-        content = soup.find("main")
-        print(content)
-        if content is None:
-            return
+        # Extract all URLs from the sitemap
+        allURLsSoup = soup.select("url")
 
-        data = content.select("p")
-        data = " ".join(p.get_text(strip=True) for p in data)
-        data = data.replace(",", " ")
+        def CallElement(url, date=""):
+            try:
+                res = requests.get(url, headers=headers)
+                soup = bs(res.text, "html.parser")
 
-        # Prepare JSON data
-        json_data = {
-            "data": data,
-            "category": category,
-            "date": date,
-            "publisher": "Dailynews",
-            "url": url,
-        }
+                # Extract the category
+                category = (
+                    soup.find("div", {"data-elementor-type": "single-post"})
+                    .find("nav", recursive=False)
+                    .find("div")
+                    .find("div")
+                )
+                category = category.find_all("a")[-1].text
 
-        # Store in MongoDB
-        self.collection.insert_one(json_data)
+                # Extract the content
+                content = soup.find("main")
+                if content is None:
+                    return
 
-        # Send to Kafka
-        self.kafka_producer.send("news_topic", json.dumps(json_data).encode("utf-8"))
+                data = content.select("p")
+                data = " ".join(p.get_text(strip=True) for p in data)
+                data = data.replace(",", " ")
+                print(f"this is data {data}")
+                # Prepare the JSON data
+                json_data = {
+                    "data": data,
+                    "category": category,
+                    "date": date,
+                    "publisher": "Dailynews",
+                    "url": url,
+                }
+
+                # Store in MongoDB
+                self.collection.insert_one(json_data)
+
+                # Send to Kafka
+                self.kafka_producer.send(
+                    "news_topic", json.dumps(json_data).encode("utf-8")
+                )
+
+            except Exception as e:
+                print(f"Error processing URL {url}: {e}")
+
+        # Loop through all URLs found in the sitemap
+        n = 0
+        for e in allURLsSoup:
+            try:
+                loc = e.find("loc").text
+                lastmod = e.find("lastmod").text if e.find("lastmod") else ""
+                CallElement(loc, lastmod)
+                n += 1
+            except Exception as e:
+                print(f"Error with sitemap element: {e}")
+                continue
+            if n == 10:
+                break
 
 
 def serve():
