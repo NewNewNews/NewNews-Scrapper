@@ -14,7 +14,9 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
         self.mongo_client = MongoClient("mongodb://mongodb:27017/")
         self.db = self.mongo_client["news_db"]
         self.collection = self.db["news"]
-        self.kafka_producer = KafkaProducer(bootstrap_servers=["kafka:9092"])
+        self.kafka_producer = KafkaProducer(
+            bootstrap_servers=["localhost:9092"]
+        )  # "localhost:9092"   "kafka:9092"
 
     def GetNews(self, request, context):
         query = {}
@@ -37,6 +39,7 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
     def ScrapeNews(self, request, context):
         try:
             self.CreateNewsElement(request.url)
+            print(request)
             return news_service_pb2.ScrapeNewsResponse(success=True)
         except Exception as e:
             print(f"Error scraping news: {str(e)}")
@@ -46,22 +49,34 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
         headers = {"User-Agent": "Mozilla/5.0"}
         res = requests.get(url, headers=headers)
         soup = bs(res.text, "html.parser")
-
-        category = (
-            soup.find("div", {"data-elementor-type": "single-post"})
-            .find("nav", recursive=False)
-            .find("div")
-            .find("div")
-        )
-        category = category.find_all("a")[-1].text
+        allSoup = soup.select("url")
+        print(type(allSoup))
+        tmp = allSoup[1].find("loc").text
+        # Extract category
+        try:
+            category = (
+                tmp.find("div", {"data-elementor-type": "single-post"})
+                .find("nav", recursive=False)
+                .find("div")
+                .find("div")
+                .find_all("a")[-1]
+                .text
+            )
+        except Exception as e:
+            print(f"Failed to extract category: {str(e)}")
+            # return
+        # Extract content
 
         content = soup.find("main")
+        print(content)
         if content is None:
             return
 
         data = content.select("p")
         data = " ".join(p.get_text(strip=True) for p in data)
         data = data.replace(",", " ")
+
+        # Prepare JSON data
         json_data = {
             "data": data,
             "category": category,
