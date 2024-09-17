@@ -34,20 +34,41 @@ class NewsServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.GetNews = channel.unary_unary(
-                '/news.NewsService/GetNews',
-                request_serializer=proto_dot_news__service__pb2.GetNewsRequest.SerializeToString,
-                response_deserializer=proto_dot_news__service__pb2.GetNewsResponse.FromString,
-                _registered_method=True)
         self.ScrapeNews = channel.unary_unary(
                 '/news.NewsService/ScrapeNews',
                 request_serializer=proto_dot_news__service__pb2.ScrapeNewsRequest.SerializeToString,
                 response_deserializer=proto_dot_news__service__pb2.ScrapeNewsResponse.FromString,
                 _registered_method=True)
+        self.GetNews = channel.unary_unary(
+                '/news.NewsService/GetNews',
+                request_serializer=proto_dot_news__service__pb2.GetNewsRequest.SerializeToString,
+                response_deserializer=proto_dot_news__service__pb2.GetNewsResponse.FromString,
+                _registered_method=True)
+        self.GetOneNews = channel.unary_unary(
+                '/news.NewsService/GetOneNews',
+                request_serializer=proto_dot_news__service__pb2.GetOneNewsRequest.SerializeToString,
+                response_deserializer=proto_dot_news__service__pb2.GetNewsResponse.FromString,
+                _registered_method=True)
+        self.UpdateNews = channel.unary_unary(
+                '/news.NewsService/UpdateNews',
+                request_serializer=proto_dot_news__service__pb2.UpdateNewsRequest.SerializeToString,
+                response_deserializer=proto_dot_news__service__pb2.UpdateNewsResponse.FromString,
+                _registered_method=True)
+        self.DeleteNews = channel.unary_unary(
+                '/news.NewsService/DeleteNews',
+                request_serializer=proto_dot_news__service__pb2.DeleteNewsRequest.SerializeToString,
+                response_deserializer=proto_dot_news__service__pb2.DeleteNewsResponse.FromString,
+                _registered_method=True)
 
 
 class NewsServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
+
+    def ScrapeNews(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def GetNews(self, request, context):
         """Missing associated documentation comment in .proto file."""
@@ -55,7 +76,19 @@ class NewsServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def ScrapeNews(self, request, context):
+    def GetOneNews(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def UpdateNews(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DeleteNews(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -64,15 +97,30 @@ class NewsServiceServicer(object):
 
 def add_NewsServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
+            'ScrapeNews': grpc.unary_unary_rpc_method_handler(
+                    servicer.ScrapeNews,
+                    request_deserializer=proto_dot_news__service__pb2.ScrapeNewsRequest.FromString,
+                    response_serializer=proto_dot_news__service__pb2.ScrapeNewsResponse.SerializeToString,
+            ),
             'GetNews': grpc.unary_unary_rpc_method_handler(
                     servicer.GetNews,
                     request_deserializer=proto_dot_news__service__pb2.GetNewsRequest.FromString,
                     response_serializer=proto_dot_news__service__pb2.GetNewsResponse.SerializeToString,
             ),
-            'ScrapeNews': grpc.unary_unary_rpc_method_handler(
-                    servicer.ScrapeNews,
-                    request_deserializer=proto_dot_news__service__pb2.ScrapeNewsRequest.FromString,
-                    response_serializer=proto_dot_news__service__pb2.ScrapeNewsResponse.SerializeToString,
+            'GetOneNews': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetOneNews,
+                    request_deserializer=proto_dot_news__service__pb2.GetOneNewsRequest.FromString,
+                    response_serializer=proto_dot_news__service__pb2.GetNewsResponse.SerializeToString,
+            ),
+            'UpdateNews': grpc.unary_unary_rpc_method_handler(
+                    servicer.UpdateNews,
+                    request_deserializer=proto_dot_news__service__pb2.UpdateNewsRequest.FromString,
+                    response_serializer=proto_dot_news__service__pb2.UpdateNewsResponse.SerializeToString,
+            ),
+            'DeleteNews': grpc.unary_unary_rpc_method_handler(
+                    servicer.DeleteNews,
+                    request_deserializer=proto_dot_news__service__pb2.DeleteNewsRequest.FromString,
+                    response_serializer=proto_dot_news__service__pb2.DeleteNewsResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -84,6 +132,33 @@ def add_NewsServiceServicer_to_server(servicer, server):
  # This class is part of an EXPERIMENTAL API.
 class NewsService(object):
     """Missing associated documentation comment in .proto file."""
+
+    @staticmethod
+    def ScrapeNews(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/news.NewsService/ScrapeNews',
+            proto_dot_news__service__pb2.ScrapeNewsRequest.SerializeToString,
+            proto_dot_news__service__pb2.ScrapeNewsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def GetNews(request,
@@ -113,7 +188,7 @@ class NewsService(object):
             _registered_method=True)
 
     @staticmethod
-    def ScrapeNews(request,
+    def GetOneNews(request,
             target,
             options=(),
             channel_credentials=None,
@@ -126,9 +201,63 @@ class NewsService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/news.NewsService/ScrapeNews',
-            proto_dot_news__service__pb2.ScrapeNewsRequest.SerializeToString,
-            proto_dot_news__service__pb2.ScrapeNewsResponse.FromString,
+            '/news.NewsService/GetOneNews',
+            proto_dot_news__service__pb2.GetOneNewsRequest.SerializeToString,
+            proto_dot_news__service__pb2.GetNewsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def UpdateNews(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/news.NewsService/UpdateNews',
+            proto_dot_news__service__pb2.UpdateNewsRequest.SerializeToString,
+            proto_dot_news__service__pb2.UpdateNewsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def DeleteNews(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/news.NewsService/DeleteNews',
+            proto_dot_news__service__pb2.DeleteNewsRequest.SerializeToString,
+            proto_dot_news__service__pb2.DeleteNewsResponse.FromString,
             options,
             channel_credentials,
             insecure,
