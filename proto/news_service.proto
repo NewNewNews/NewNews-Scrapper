@@ -5,13 +5,20 @@ package news;
 option go_package = "github.com/yourusername/gateway/internal/proto";
 
 service NewsService {
-  rpc GetNews(GetNewsRequest) returns (GetNewsResponse) {}
   rpc ScrapeNews(ScrapeNewsRequest) returns (ScrapeNewsResponse) {}
+  rpc GetNews(GetNewsRequest) returns (GetNewsResponse) {}
+  rpc GetOneNews(GetOneNewsRequest) returns (GetNewsResponse);
+  rpc UpdateNews(UpdateNewsRequest) returns (UpdateNewsResponse) {}
+  rpc DeleteNews(DeleteNewsRequest) returns (DeleteNewsResponse) {}
 }
 
 message GetNewsRequest {
   string category = 1;
   string date = 2;
+}
+
+message GetOneNewsRequest {
+  string id = 1;
 }
 
 message GetNewsResponse {
@@ -32,4 +39,27 @@ message NewsItem {
   string date = 3;
   string publisher = 4;
   string url = 5;
+}
+
+message UpdateNewsRequest {
+  string id = 1;        // The ID of the news item to update
+  string data = 2;      // Optional: new data for the news item
+  string category = 3;  // Optional: new category
+  string date = 4;      // Optional: new date
+  string publisher = 5; // Optional: new publisher
+  string url = 6;       // Optional: new URL
+}
+
+message UpdateNewsResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message DeleteNewsRequest {
+  string id = 1;
+}
+
+message DeleteNewsResponse {
+  bool success = 1;
+  string message = 2; 
 }

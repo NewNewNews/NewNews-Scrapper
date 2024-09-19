@@ -8,7 +8,7 @@ from pymongo import MongoClient
 from proto import news_service_pb2
 from proto import news_service_pb2_grpc
 import os
-
+from bson.objectid import ObjectId
 
 class NewsService(news_service_pb2_grpc.NewsServiceServicer):
     def __init__(self):
@@ -39,6 +39,79 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
             news_item.date = item["date"]
             news_item.publisher = item["publisher"]
             news_item.url = item["url"]
+        return response
+
+    def GetOneNews(self, request, context):
+        try:
+            news_item = self.collection.find_one({"_id": ObjectId(request.id)})
+            if not news_item:
+                context.set_code(grpc.StatusCode.NOT_FOUND)
+                context.set_details('News item not found')
+                return news_service_pb2.GetNewsResponse()
+            
+            response = news_service_pb2.GetNewsResponse()
+            news = response.news.add()
+            news.data = news_item["data"]
+            news.category = news_item["category"]
+            news.date = news_item["date"]
+            news.publisher = news_item["publisher"]
+            news.url = news_item["url"]
+            
+            return response
+    
+        except Exception as e:
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details('Internal server error: ' + str(e))
+            return news_service_pb2.GetNewsResponse()
+
+    
+    def UpdateNews(self, request, context):
+        # Create a query to find the news item by ID
+        query = {"_id": ObjectId(request.id)}
+        
+        # Create an update dictionary based on the request fields
+        update = {}
+        if request.data:
+            update["data"] = request.data
+        if request.category:
+            update["category"] = request.category
+        if request.publisher:
+            update["publisher"] = request.publisher
+        if request.date:
+            update["date"] = request.date
+        if request.url:
+            update["url"] = request.url
+        
+        # Perform the update operation in MongoDB
+        result = self.collection.update_one(query, {"$set": update})
+
+        # Create a response
+        response = news_service_pb2.UpdateNewsResponse()
+        if result.matched_count == 1:
+            response.success = True
+            response.message = "News item updated successfully"
+        else:
+            response.success = False
+            response.message = "News item not found"
+        
+        return response
+    
+    def DeleteNews(self, request, context):
+        # Create a query to find the news item by ID
+        query = {"_id": ObjectId(request.id)}
+        
+        # Perform the delete operation in MongoDB
+        result = self.collection.delete_one(query)
+
+        # Create a response
+        response = news_service_pb2.DeleteNewsResponse()
+        if result.deleted_count == 1:
+            response.success = True
+            response.message = "News item deleted successfully"
+        else:
+            response.success = False
+            response.message = "News item not found"
+        
         return response
 
     def ScrapeNews(self, request, context):
