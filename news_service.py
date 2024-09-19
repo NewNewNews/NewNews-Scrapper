@@ -7,18 +7,21 @@ from kafka import KafkaProducer
 from pymongo import MongoClient
 from proto import news_service_pb2
 from proto import news_service_pb2_grpc
+import os
 
 
 class NewsService(news_service_pb2_grpc.NewsServiceServicer):
     def __init__(self):
-        self.mongo_client = MongoClient(
-            "mongodb://localhost:27017/"
-        )  # mongodb://mongodb:27017/
+        mongo_uri = os.environ.get("MONGO_URI", "mongodb://localhost:27017/")
+        kafka_broker = os.environ.get("KAFKA_BROKER", "localhost:9092")
+        self.mongo_client = MongoClient(mongo_uri)  # mongodb://mongodb:27017/
         self.db = self.mongo_client["news_db"]
         self.collection = self.db["news"]
+        print(f"connect success on port: {mongo_uri}")
         self.kafka_producer = KafkaProducer(
-            bootstrap_servers=["localhost:9092"]
+            bootstrap_servers=[kafka_broker]
         )  # "localhost:9092"   "kafka:9092"
+        print(f"connect success on port: {kafka_broker}")
 
     def GetNews(self, request, context):
         query = {}
@@ -118,6 +121,7 @@ def serve():
     news_service_pb2_grpc.add_NewsServiceServicer_to_server(NewsService(), server)
     server.add_insecure_port("[::]:50051")
     server.start()
+    print("server start connection on port 50051")
     server.wait_for_termination()
 
 

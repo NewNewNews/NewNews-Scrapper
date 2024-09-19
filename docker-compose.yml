@@ -23,9 +23,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    environment:
+      MONGO_URI: mongodb://mongodb:27017/
+      KAFKA_BROKER: kafka:9092
     depends_on:
-      - mongodb
       - kafka
+      - mongodb
+    networks:
+      - my-custom-network
 
   mongodb:
     image: mongo:latest
@@ -33,25 +38,36 @@ services:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
+    networks:
+      - my-custom-network
 
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-
+    networks:
+      - my-custom-network
   kafka:
     image: confluentinc/cp-kafka:latest
     depends_on:
       - zookeeper
     ports:
       - "9092:9092"
+    expose:
+      - 9092
     environment:
+      ZOOKEEPER_SASL_ENABLED: "false"
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - my-custom-network
 
 volumes:
-  # postgres_data:
   mongodb_data:
+
+networks:
+  my-custom-network:
+    external: true
