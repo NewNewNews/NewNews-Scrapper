@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package news;
+
+message NewsMessage {
+  string data = 1;
+  string category = 2;
+  string date = 3;
+  string publisher = 4;
+  string url = 5;
+}

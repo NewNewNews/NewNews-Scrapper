@@ -9,6 +9,12 @@ from proto import news_service_pb2
 from proto import news_service_pb2_grpc
 import os
 from bson.objectid import ObjectId
+from concurrent import futures
+import grpc
+from proto import news_message_pb2
+from kafka.errors import KafkaError
+import urllib.parse
+
 
 class NewsService(news_service_pb2_grpc.NewsServiceServicer):
     def __init__(self):
@@ -18,10 +24,50 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
         self.db = self.mongo_client["news_db"]
         self.collection = self.db["news"]
         print(f"connect success on port: {mongo_uri}")
+
         self.kafka_producer = KafkaProducer(
-            bootstrap_servers=[kafka_broker]
+            bootstrap_servers=[kafka_broker],  # Kafka broker address
+            value_serializer=lambda v: v,  # Serializer
         )  # "localhost:9092"   "kafka:9092"
+
         print(f"connect success on port: {kafka_broker}")
+
+    def json_serializer(data):
+        return json.dumps(data).encode("utf-8")
+
+    def send_news_to_kafka(self, json_data):
+        news_message = news_message_pb2.NewsMessage(
+            data=json_data["data"],
+            category=json_data["category"],
+            date=json_data["date"],
+            publisher=json_data["publisher"],
+            url=json_data["url"],
+        )
+        print(news_message)
+
+        try:
+            # Serialize the protobuf message to bytes
+            serialized_message = news_message.SerializeToString()
+
+            # Send the message to Kafka with proper key and value serialization
+            future = self.kafka_producer.send(
+                "scraped-news",
+                key=bytes(json_data["category"], "utf-8"),  # Serialize the key to bytes
+                value=serialized_message,  # Protobuf serialized to string
+            )
+
+            # Get metadata about the sent message
+            record_metadata = future.get(timeout=10)
+            print(
+                f"Message sent successfully. Topic: {record_metadata.topic}, Partition: {record_metadata.partition}, Offset: {record_metadata.offset}"
+            )
+
+        except KafkaError as e:
+            print(f"Failed to send message to Kafka: {e}")
+
+        finally:
+            # Ensure all messages are flushed
+            self.kafka_producer.flush()
 
     def GetNews(self, request, context):
         query = {}
@@ -46,9 +92,9 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
             news_item = self.collection.find_one({"_id": ObjectId(request.id)})
             if not news_item:
                 context.set_code(grpc.StatusCode.NOT_FOUND)
-                context.set_details('News item not found')
+                context.set_details("News item not found")
                 return news_service_pb2.GetNewsResponse()
-            
+
             response = news_service_pb2.GetNewsResponse()
             news = response.news.add()
             news.data = news_item["data"]
@@ -56,19 +102,18 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
             news.date = news_item["date"]
             news.publisher = news_item["publisher"]
             news.url = news_item["url"]
-            
+
             return response
-    
+
         except Exception as e:
             context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details('Internal server error: ' + str(e))
+            context.set_details("Internal server error: " + str(e))
             return news_service_pb2.GetNewsResponse()
 
-    
     def UpdateNews(self, request, context):
         # Create a query to find the news item by ID
         query = {"_id": ObjectId(request.id)}
-        
+
         # Create an update dictionary based on the request fields
         update = {}
         if request.data:
@@ -81,7 +126,7 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
             update["date"] = request.date
         if request.url:
             update["url"] = request.url
-        
+
         # Perform the update operation in MongoDB
         result = self.collection.update_one(query, {"$set": update})
 
@@ -93,13 +138,13 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
         else:
             response.success = False
             response.message = "News item not found"
-        
+
         return response
-    
+
     def DeleteNews(self, request, context):
         # Create a query to find the news item by ID
         query = {"_id": ObjectId(request.id)}
-        
+
         # Perform the delete operation in MongoDB
         result = self.collection.delete_one(query)
 
@@ -111,7 +156,7 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
         else:
             response.success = False
             response.message = "News item not found"
-        
+
         return response
 
     def ScrapeNews(self, request, context):
@@ -153,8 +198,8 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
                 data = content.select("p")
                 data = " ".join(p.get_text(strip=True) for p in data)
                 data = data.replace(",", " ")
-                print(f"this is data {data}")
                 # Prepare the JSON data
+                # url = urllib.parse.quote(url, safe=':/')
                 json_data = {
                     "data": data,
                     "category": category,
@@ -162,14 +207,16 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
                     "publisher": "Dailynews",
                     "url": url,
                 }
-
+                print(f"available date {date}")
                 # Store in MongoDB
                 self.collection.insert_one(json_data)
 
                 # Send to Kafka
-                self.kafka_producer.send(
-                    "news_topic", json.dumps(json_data).encode("utf-8")
-                )
+                # self.kafka_producer.send(
+                #     "news_topic", json.dumps(json_data).encode("utf-8")
+                # )
+                json_string = json.dumps(json_data).encode("utf-8")
+                self.send_news_to_kafka(json_string)
 
             except Exception as e:
                 print(f"Error processing URL {url}: {e}")
@@ -185,7 +232,7 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
             except Exception as e:
                 print(f"Error with sitemap element: {e}")
                 continue
-            if n == 10:
+            if n == 2:
                 break
 
 

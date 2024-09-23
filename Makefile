@@ -27,7 +27,7 @@ proto: $(GOOGLE_APIS_DIR)
 		-I$(PROTO_DIR) \
 		--python_out=. \
 		--grpc_python_out=. \
-		$(PROTO_DIR)/news_service.proto
+		$(PROTO_DIR)/news_service.proto $(PROTO_DIR)/news_message.proto
 
 # For Windows PowerShell
 # proto-windows: $(GOOGLE_APIS_DIR)
