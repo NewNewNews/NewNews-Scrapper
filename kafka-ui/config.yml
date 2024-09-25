@@ -9,5 +9,7 @@ spring:
 
 kafka:
   clusters:
-    - bootstrapServers: kafka-0:9092,kafka-1:9092,kafka-2:9092
+    # - bootstrapServers: kafka-0:9092,kafka-1:9092,kafka-2:9092
+    #   name: kafka
+    - bootstrapServers: kafka1:9092
       name: kafka

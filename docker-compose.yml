@@ -57,6 +57,77 @@ services:
   #     - mongodb
   #   networks:
   #     - my-custom-network
+  broker:
+    image: confluentinc/cp-kafka:latest
+    hostname: broker
+    container_name: broker
+    ports:
+      - "9092:9092" # Expose Kafka broker port
+      - "9101:9101" # JMX port for monitoring
+    environment:
+      # Unique Node ID
+      KAFKA_NODE_ID: 1
+
+      # Define security protocol for each listener
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
+
+      # Advertised listeners for broker (internal network) and external access (localhost)
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://broker:29092,PLAINTEXT_HOST://localhost:9092"
+
+      # Replication and state log configuration for Kafka topics
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+
+      # Reduces the initial rebalance delay to make group rebalancing faster
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+      # JMX settings for monitoring Kafka
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
+
+      # Specify the roles for the node (broker + controller)
+      KAFKA_PROCESS_ROLES: "broker,controller"
+
+      # Define controller quorum voters (KRaft mode)
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@broker:29093"
+
+      # Define listeners (PLAINTEXT for the broker, CONTROLLER for the KRaft controller)
+      KAFKA_LISTENERS: "PLAINTEXT://broker:29092,CONTROLLER://broker:29093,PLAINTEXT_HOST://0.0.0.0:9092"
+
+      # Inter-broker communication is via PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+
+      # The controller will listen on the CONTROLLER protocol
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+
+      # Directory to store log data
+      KAFKA_LOG_DIRS: "/tmp/kraft-combined-logs"
+
+      # KRaft mode requires a unique CLUSTER_ID
+      # Use "bin/kafka-storage.sh random-uuid" to generate this value.
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk" # Replace with a generated UUID
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - "9999:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: broker:29092
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:latest
+    hostname: schema-registry
+    container_name: schema-registry
+    depends_on:
+      - broker
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "broker:29092"
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
 
   mongodb:
     image: mongo:latest
@@ -66,117 +137,41 @@ services:
       - mongodb_data:/data/db
     networks:
       - my-custom-network
+  # kafka-ui:
+  #   container_name: kafka-ui
+  #   image: provectuslabs/kafka-ui:latest
+  #   ports:
+  #     - 9090:8080
+  #   environment:
+  #     DYNAMIC_CONFIG_ENABLED: true
+  #   depends_on:
+  #     - kafka-0
+  #     - kafka-1
+  #     - kafka-2
+  #   networks:
+  #     - kafka-net
+  #   volumes:
+  #     - ./kafka-ui/config.yml:/etc/kafkaui/dynamic_config.yaml
 
-  # make three kafka broker without zookeeper
-  kafka-0:
-    image: docker.io/bitnami/kafka:3.8
-    ports:
-      - "9092:9092"
-    environment:
-      # KRaft settings
-      - KAFKA_CFG_NODE_ID=0
-      - KAFKA_CFG_PROCESS_ROLES=controller,broker
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka-0:9093,1@kafka-1:9093,2@kafka-2:9093
-      - KAFKA_KRAFT_CLUSTER_ID=abcdefghijklmnopqrstuv
-      # Listeners
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://:9092
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
-      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
-      # Clustering
-      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=3
-      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=3
-      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=2
-    volumes:
-      - kafka_0_data:/bitnami/kafka
-
-  kafka-1:
-    image: docker.io/bitnami/kafka:3.8
-    ports:
-      - "9092"
-    environment:
-      # KRaft settings
-      - KAFKA_CFG_NODE_ID=1
-      - KAFKA_CFG_PROCESS_ROLES=controller,broker
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka-0:9093,1@kafka-1:9093,2@kafka-2:9093
-      - KAFKA_KRAFT_CLUSTER_ID=abcdefghijklmnopqrstuv
-      # Listeners
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://:9092
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
-      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
-      # Clustering
-      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=3
-      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=3
-      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=2
-    volumes:
-      - kafka_1_data:/bitnami/kafka
-
-  kafka-2:
-    image: docker.io/bitnami/kafka:3.8
-    ports:
-      - "9092"
-    environment:
-      # KRaft settings
-      - KAFKA_CFG_NODE_ID=2
-      - KAFKA_CFG_PROCESS_ROLES=controller,broker
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka-0:9093,1@kafka-1:9093,2@kafka-2:9093
-      - KAFKA_KRAFT_CLUSTER_ID=abcdefghijklmnopqrstuv
-      # Listeners
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://:9092
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
-      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
-      # Clustering
-      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=3
-      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=3
-      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=2
-    volumes:
-      - kafka_2_data:/bitnami/kafka
-
-  kafka-ui:
-    container_name: kafka-ui
-    image: provectuslabs/kafka-ui:latest
-    ports:
-      - 9090:8080
-    environment:
-      DYNAMIC_CONFIG_ENABLED: true
-    depends_on:
-      - kafka-0
-      - kafka-1
-      - kafka-2
-    networks:
-      - kafka-net
-    volumes:
-      - ./kafka-ui/config.yml:/etc/kafkaui/dynamic_config.yaml
-
-  kafka-setup:
-    image: bitnami/kafka:latest
-    depends_on:
-      - kafka-0
-      - kafka-1
-      - kafka-2
-    command: >
-      bash -c "
-        echo Waiting for Kafka to be ready...
-        sleep 30
-        echo Creating Kafka topics...
-        kafka-topics.sh --create --if-not-exists --bootstrap-server kafka-0:9092 --partitions 2 --replication-factor 3 --topic scraped-news
-        echo Kafka topics created.
-      "
-    networks:
-      - kafka-net
+  # kafka-setup:
+  #   image: bitnami/kafka:latest
+  #   depends_on:
+  #     - kafka-0
+  #     - kafka-1
+  #     - kafka-2
+  #   command: >
+  #     bash -c "
+  #       echo Waiting for Kafka to be ready...
+  #       sleep 30
+  #       echo Creating Kafka topics...
+  #       kafka-topics.sh --create --if-not-exists --bootstrap-server kafka-0:9092 --partitions 2 --replication-factor 3 --topic scraped-news
+  #       echo Kafka topics created.
+  #     "
+  #   networks:
+  #     - kafka-net
 volumes:
   mongodb_data:
-  kafka_0_data:
-    driver: local
-  kafka_1_data:
-    driver: local
-  kafka_2_data:
-    driver: local
+  volume1:
 
 networks:
   my-custom-network:

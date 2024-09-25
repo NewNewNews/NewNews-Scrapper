@@ -3,7 +3,6 @@ import requests
 from bs4 import BeautifulSoup as bs
 from concurrent import futures
 import json
-from kafka import KafkaProducer
 from pymongo import MongoClient
 from proto import news_service_pb2
 from proto import news_service_pb2_grpc
@@ -12,30 +11,59 @@ from bson.objectid import ObjectId
 from concurrent import futures
 import grpc
 from proto import news_message_pb2
-from kafka.errors import KafkaError
-import urllib.parse
+import json
+from confluent_kafka import Producer, KafkaError
+from confluent_kafka.serialization import (
+    StringSerializer,
+    SerializationContext,
+    MessageField,
+)
+
+from confluent_kafka.schema_registry import SchemaRegistryClient
+from confluent_kafka.schema_registry.protobuf import ProtobufSerializer
+from proto import news_message_pb2
 
 
 class NewsService(news_service_pb2_grpc.NewsServiceServicer):
     def __init__(self):
         mongo_uri = os.environ.get("MONGO_URI", "mongodb://localhost:27017/")
         kafka_broker = os.environ.get("KAFKA_BROKER", "localhost:9092")
+        schema_registry_url = os.environ.get(
+            "SCHEMA_REGISTRY_URL", "http://localhost:8081"
+        )
         self.mongo_client = MongoClient(mongo_uri)  # mongodb://mongodb:27017/
         self.db = self.mongo_client["news_db"]
         self.collection = self.db["news"]
         print(f"connect success on port: {mongo_uri}")
 
-        self.kafka_producer = KafkaProducer(
-            bootstrap_servers=[kafka_broker],  # Kafka broker address
-            value_serializer=lambda v: v,  # Serializer
-        )  # "localhost:9092"   "kafka:9092"
-
+        producer_conf = {"bootstrap.servers": kafka_broker}
+        self.kafka_producer = Producer(producer_conf)
+        schema_registry_conf = {"url": schema_registry_url}
+        self.schema_registry_client = SchemaRegistryClient(schema_registry_conf)
         print(f"connect success on port: {kafka_broker}")
+
+        self.protobuf_serializer = ProtobufSerializer(
+            news_message_pb2.NewsMessage,
+            self.schema_registry_client,
+            conf={"use.deprecated.format": True},
+        )
+        self.string_serializer = StringSerializer("utf8")
 
     def json_serializer(data):
         return json.dumps(data).encode("utf-8")
 
+    def delivery_report(err, msg):
+        if err is not None:
+            print(f"Delivery failed for message {msg.key()}: {err}")
+            return
+        print(
+            f"Message {msg.key()} successfully produced to {msg.topic()} [{msg.partition()}] at offset {msg.offset()}"
+        )
+
     def send_news_to_kafka(self, json_data):
+        print("start")
+        self.kafka_producer.poll(0.0)
+
         news_message = news_message_pb2.NewsMessage(
             data=json_data["data"],
             category=json_data["category"],
@@ -44,24 +72,18 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
             url=json_data["url"],
         )
         print(news_message)
+        topic = "scraped-news"
 
         try:
-            # Serialize the protobuf message to bytes
-            serialized_message = news_message.SerializeToString()
-
-            # Send the message to Kafka with proper key and value serialization
-            future = self.kafka_producer.send(
-                "scraped-news",
-                key=bytes(json_data["category"], "utf-8"),  # Serialize the key to bytes
-                value=serialized_message,  # Protobuf serialized to string
+            self.kafka_producer.produce(
+                topic=topic,
+                key=self.string_serializer(json_data["category"]),
+                value=self.protobuf_serializer(
+                    news_message, SerializationContext(topic, MessageField.VALUE)
+                ),
+                on_delivery=self.delivery_report,
             )
-
-            # Get metadata about the sent message
-            record_metadata = future.get(timeout=10)
-            print(
-                f"Message sent successfully. Topic: {record_metadata.topic}, Partition: {record_metadata.partition}, Offset: {record_metadata.offset}"
-            )
-
+            print("already send")
         except KafkaError as e:
             print(f"Failed to send message to Kafka: {e}")
 
@@ -215,8 +237,9 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
                 # self.kafka_producer.send(
                 #     "news_topic", json.dumps(json_data).encode("utf-8")
                 # )
-                json_string = json.dumps(json_data).encode("utf-8")
-                self.send_news_to_kafka(json_string)
+                print(f"sending news to kafka...")
+                # json_string = json.dumps(json_data).encode("utf-8")
+                self.send_news_to_kafka(json_data)
 
             except Exception as e:
                 print(f"Error processing URL {url}: {e}")
