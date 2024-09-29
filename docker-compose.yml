@@ -137,6 +137,44 @@ services:
       - mongodb_data:/data/db
     networks:
       - my-custom-network
+
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:latest
+    container_name: kafka-exporter
+    depends_on:
+      - broker
+      - schema-registry
+      - kafka-ui
+    command:
+      - --kafka.server=broker:29092
+      - --web.listen-address=:9308
+    ports:
+      - "9308:9308"
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - kafka-exporter
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3333:3000"
+    depends_on:
+      - kafka-exporter
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-storage:/var/lib/grafana
   # kafka-ui:
   #   container_name: kafka-ui
   #   image: provectuslabs/kafka-ui:latest
@@ -172,6 +210,7 @@ services:
 volumes:
   mongodb_data:
   volume1:
+  grafana-storage:
 
 networks:
   my-custom-network:
