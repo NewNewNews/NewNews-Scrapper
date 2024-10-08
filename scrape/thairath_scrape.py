@@ -1,13 +1,22 @@
+import os
 import requests
 from bs4 import BeautifulSoup as bs
 import json
 import re
 from datetime import date
 
-def ScrapeNews(n, url, newServices, date=""):
+central_categories = {
+        'Sports': ['sport'],
+        'Entertainment': ['lifestyle', 'entertain'],
+        'Politics & Society': ['society', 'politic', 'crime'],
+        'Lifestyle & Culture': ['local', 'novel'],
+        'News & Current Affairs': ['foreign', 'scoop', 'auto']
+    }
+
+def ScrapeNews(n, url, newServices, date="", dev_mode = False):
     headers = {"User-Agent": "Mozilla/5.0"}
     res = requests.get(url, headers=headers)
-    soup = bs(res.text, "html.parser")
+    soup = bs(res.text, "lxml")
 
     allURLsSoup = soup.select("url")
 
@@ -15,23 +24,25 @@ def ScrapeNews(n, url, newServices, date=""):
     for e in allURLsSoup:
         try:
             loc = e.find("loc").text
-            CallElement(loc, headers, newServices)
+            CallElement(loc, headers, newServices, dev_mode)
             count += 1
+            print("complete")
         except Exception as e:
-            print(f"Error with sitemap element: {e}")
+            #print(f"Error with sitemap element: {e}")
             continue
         if count == n:
             break
 
-def CallElement(url, headers, newServices, date=""):
+def CallElement(url, headers, newServices, dev_mode, date=""):
     category = url.split("/")[3:]
     if (category[0] == "news"):
         category = category[1]
     else:
         category = category[0]
+    category = map_category(category)
 
     res = requests.get(url)
-    soup = bs(res.text, 'html.parser')
+    soup = bs(res.text, 'lxml')
     date = soup.find("div", class_=re.compile(r"__item_article-date.*\bcss\b"))
     if (date == None):
         date = getDate()
@@ -45,14 +56,18 @@ def CallElement(url, headers, newServices, date=""):
     data = " ".join(p.get_text(strip=True) for p in data)
     data = data.replace(",", " ")
     json_data = {"data": data, "category": category, "date": date, "publisher": "Thairath", "url": url}
-    
-    # Store in MongoDB
-    newServices.collection.insert_one(json_data)
 
-    # Send to Kafka
-    newServices.kafka_producer.send(
-        "news_topic", json.dumps(json_data).encode("utf-8")
-    )
+    if (not dev_mode):
+        # Store in MongoDB
+        newServices.collection.insert_one(json_data)
+
+        # Send to Kafka
+        newServices.kafka_producer.send(
+            "news_topic", json.dumps(json_data).encode("utf-8")
+        )
+    else:
+        with open("../data_temp/thairath_news_temp", 'a', encoding = "utf-8") as file:
+                json.dump(json_data, file, ensure_ascii = False, indent = 5)
 
 def getDate():
     thai_months = {
@@ -64,3 +79,9 @@ def getDate():
     thai_month = thai_months[today.month]
     formatted_thai_date = f"{today.day} {thai_month} {thai_year}"
     return formatted_thai_date
+
+def map_category(news_category):
+    for central, categories in central_categories.items():
+        if news_category in categories:
+            return central
+    return 'Etc'

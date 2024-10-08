@@ -10,12 +10,14 @@ headers = {"User-Agent": "Mozilla/5.0"}
 def getCurrentDailynews():
     head_url = "https://www.dailynews.co.th/sitemap_index.xml"
     res = requests.get(head_url, headers=headers)
-    soup = bs(res.text, "html.parser")
+    soup = bs(res.text, "lxml")
 
-    urls = soup.find("tbody").select("tr")[3:]
+    urls = []
+    for loc in soup.select("loc"):
+        urls.append(loc.text)
     number = find_xitemap(urls)
 
-    return "https://www.dailynews.co.th/article-sitemap" + number + ".xml"
+    return "https://www.dailynews.co.th/news-sitemap" + str(number) + ".xml"
 
 def getCurrentThairath():
     return "https://www.thairath.co.th/sitemap-daily.xml"
@@ -30,8 +32,9 @@ def find_xitemap(urls):
     highest_num = -1
 
     for url in urls:
+        if (not url[:len("https://www.dailynews.co.th/news-sitemap")] == "https://www.dailynews.co.th/news-sitemap"): continue
         # Use regular expression to match elements that start with 'a' followed by a number
-        match = re.search(r'article-sitemap(\d+)\.xml', url)
+        match = re.search(r'news-sitemap(\d+)\.xml', url)
         if match:
             # Extract the number and compare with the current highest
             num = int(match.group(1))

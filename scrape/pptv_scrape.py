@@ -1,3 +1,4 @@
+import os
 import requests
 from bs4 import BeautifulSoup as bs
 import json
@@ -5,16 +6,25 @@ import re
 import urllib.parse
 from datetime import date
 
-def ScrapeNews(n, url, newServices, date=""):
+central_categories = {
+        'Sports': ['sport'],
+        'Entertainment': ['บันเทิง'],
+        'Politics & Society': ['การเมือง', 'อาชญากรรม', 'สังคม'],
+        'Lifestyle & Culture': ['ท่องเที่ยว-ที่พัก'],
+        'News & Current Affairs': ['ต่างประเทศ']
+    }
+
+def ScrapeNews(n, url, newServices, date="", dev_mode = False):
     headers = {"User-Agent": "Mozilla/5.0"}
     res = requests.get(url, headers=headers)
-    soup = bs(res.text, "html.parser")
+    soup = bs(res.text, "lxml")
 
     allURLsSoup = soup.select("url")
     allURLs = []
 
     for e in allURLsSoup:
         url = e.find("loc").text
+        print(url)
 
         filter = url.replace("https://www.pptvhd36.com/", "").split("/")
         if (
@@ -30,16 +40,15 @@ def ScrapeNews(n, url, newServices, date=""):
     count = 0
     for e in allURLs:
         try:
-            loc = e.find("loc").text
-            CallElement(loc, headers, newServices)
+            CallElement(e, headers, newServices, dev_mode)
             count += 1
         except Exception as e:
-            print(f"Error with sitemap element: {e}")
+            #print(f"Error with sitemap element: {e}")
             continue
         if count == n:
             break
 
-def CallElement(url, headers, newServices, date=""):
+def CallElement(url, headers, newServices, dev_mode, date=""):
     category = url.replace("https://www.pptvhd36.com/", "").split("/")
     if needsEncoding(category[-2]):
         category = urllib.parse.unquote(category[-2])
@@ -48,8 +57,10 @@ def CallElement(url, headers, newServices, date=""):
     else:
         category = category[0]
 
+    category = map_category(category)
+
     res = requests.get(url, headers=headers)
-    soup = bs(res.text, "html.parser")
+    soup = bs(res.text, "lxml")
     date = soup.find("time")
     if date == None:
         date = getDate()
@@ -65,6 +76,7 @@ def CallElement(url, headers, newServices, date=""):
     data = content.select("p")[2:]
     data = " ".join(p.get_text(strip=True) for p in data)
     data = data.replace(",", " ")
+
     json_data = {
         "data": data,
         "category": category,
@@ -73,12 +85,16 @@ def CallElement(url, headers, newServices, date=""):
         "url": url,
     }
 
-    newServices.collection.insert_one(json_data)
+    if (not dev_mode):
+        newServices.collection.insert_one(json_data)
 
-    # Send to Kafka
-    newServices.kafka_producer.send(
-        "news_topic", json.dumps(json_data).encode("utf-8")
-    )
+        # Send to Kafka
+        newServices.kafka_producer.send(
+            "news_topic", json.dumps(json_data).encode("utf-8")
+        )
+    else:
+        with open("../data_temp/pptv_news_temp", 'a', encoding = "utf-8") as file:
+                json.dump(json_data, file, ensure_ascii = False, indent = 5)
 
 def needsEncoding(s):
     return s[0] == "%" and s[3] == "%"
@@ -93,3 +109,9 @@ def getDate():
     thai_month = thai_months[today.month]
     formatted_thai_date = f"{today.day} {thai_month} {thai_year}"
     return formatted_thai_date
+
+def map_category(news_category):
+    for central, categories in central_categories.items():
+        if news_category in categories:
+            return central
+    return 'Etc'
