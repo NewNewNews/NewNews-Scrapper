@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup as bs
 
 from concurrent import futures
 import json
-from kafka import KafkaProducer
+from confluent_kafka import Producer
 from pymongo import MongoClient
 from traitlets import This
 from proto import news_service_pb2
@@ -18,10 +18,9 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
         )  # mongodb://mongodb:27017/
         self.db = self.mongo_client["news_db"]
         self.collection = self.db["news"]
-        self.kafka_producer = KafkaProducer(
-            bootstrap_servers=["localhost:9092"],
-            api_version=(2, 0, 2)
-        )  # "localhost:9092"   "kafka:9092"
+        self.kafka_producer = Producer({
+            'bootstrap.servers': 'localhost:9092'
+        })
 
     def GetNews(self, request, context):
         query = {}
@@ -43,7 +42,7 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
 
     def ScrapeNews(self, request, context):
         try:
-            self.CreateNewsElement(request.url)
+            self.CreateNewsElement()
             print(request)
             return news_service_pb2.ScrapeNewsResponse(success=True)
         except Exception as e:
@@ -55,9 +54,9 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
         thairath_url = get_current_url.getCurrentThairath()
         pptv_url = get_current_url.getCurrentPPTV()
 
-        dailynews_scrape.ScrapeNews(3, dailynews_url, This)
-        thairath_scrape.ScrapeNews(3, thairath_url, This)
-        pptv_scrape.ScrapeNews(3, pptv_url, This)
+        dailynews_scrape.ScrapeNews(3, dailynews_url, self)
+        thairath_scrape.ScrapeNews(3, thairath_url, self)
+        pptv_scrape.ScrapeNews(3, pptv_url, self)
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))

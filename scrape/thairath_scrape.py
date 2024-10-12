@@ -26,9 +26,8 @@ def ScrapeNews(n, url, newServices, date="", dev_mode = False):
             loc = e.find("loc").text
             CallElement(loc, headers, newServices, dev_mode)
             count += 1
-            print("complete")
         except Exception as e:
-            #print(f"Error with sitemap element: {e}")
+            print(f"Error with sitemap element: {e}")
             continue
         if count == n:
             break

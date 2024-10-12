@@ -24,7 +24,6 @@ def ScrapeNews(n, url, newServices, date="", dev_mode = False):
 
     for e in allURLsSoup:
         url = e.find("loc").text
-        print(url)
 
         filter = url.replace("https://www.pptvhd36.com/", "").split("/")
         if (
@@ -43,7 +42,7 @@ def ScrapeNews(n, url, newServices, date="", dev_mode = False):
             CallElement(e, headers, newServices, dev_mode)
             count += 1
         except Exception as e:
-            #print(f"Error with sitemap element: {e}")
+            print(f"Error with sitemap element: {e}")
             continue
         if count == n:
             break

@@ -27,7 +27,6 @@ def getCurrentPPTV():
     formatted_date = current_date.strftime("%Y-%m-%d")
     return "https://www.pptvhd36.com/sitemap-" + formatted_date + ".xml"
 
-
 def find_xitemap(urls):
     highest_num = -1
 

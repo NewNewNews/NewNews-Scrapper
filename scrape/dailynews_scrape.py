@@ -77,6 +77,7 @@ def CallElement(url, headers, newServices, dev_mode, date=""):
 
         # Store in MongoDB
         if (not dev_mode):
+            print(type(newServices))
             newServices.collection.insert_one(json_data)
 
             # Send to Kafka
