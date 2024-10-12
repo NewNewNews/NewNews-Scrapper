@@ -24,8 +24,7 @@ def ScrapeNews(n, url, newServices, date="", dev_mode = False):
     for e in allURLsSoup:
         try:
             loc = e.find("loc").text
-            CallElement(loc, headers, newServices, dev_mode)
-            count += 1
+            if CallElement(loc, headers, newServices, dev_mode): count += 1
         except Exception as e:
             print(f"Error with sitemap element: {e}")
             continue
@@ -40,8 +39,8 @@ def CallElement(url, headers, newServices, dev_mode, date=""):
         category = category[0]
     category = map_category(category)
 
-    res = requests.get(url)
-    soup = bs(res.text, 'lxml')
+    res = requests.get(url, headers=headers)
+    soup = bs(res.text, 'html.parser')
     date = soup.find("div", class_=re.compile(r"__item_article-date.*\bcss\b"))
     if (date == None):
         date = getDate()
@@ -50,20 +49,37 @@ def CallElement(url, headers, newServices, dev_mode, date=""):
 
     content = soup.find("div", {"itemprop": "article-body"})
     if (content == None): content = soup.find("div", {"itemprop": "articleBody"})
-    if (content == None): return
+    if (content == None): return False
+
+    print(date)
+    print(content)
     data = content.select("p")
     data = " ".join(p.get_text(strip=True) for p in data)
     data = data.replace(",", " ")
     json_data = {"data": data, "category": category, "date": date, "publisher": "Thairath", "url": url}
 
     if (not dev_mode):
-        # Store in MongoDB
-        newServices.collection.insert_one(json_data)
+        inserted_data = newServices.collection.insert_one(json_data)
 
-        # Send to Kafka
-        newServices.kafka_producer.send(
-            "news_topic", json.dumps(json_data).encode("utf-8")
+        def delivery_report(err, msg):
+            if err is not None:
+                print(f"Message delivery failed: {err}")
+            else:
+                print(f"Message delivered to {msg.topic()} [{msg.partition()}]")
+
+        json_data['_id'] = str(inserted_data.inserted_id)
+
+        newServices.kafka_producer.produce(
+            "news_topic",
+            key=None,
+            value=json.dumps(json_data).encode("utf-8"),
+            callback=delivery_report
         )
+
+        newServices.kafka_producer.flush()
+
+        return True
+
     else:
         with open("../data_temp/thairath_news_temp", 'a', encoding = "utf-8") as file:
                 json.dump(json_data, file, ensure_ascii = False, indent = 5)

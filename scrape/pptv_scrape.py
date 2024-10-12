@@ -85,12 +85,25 @@ def CallElement(url, headers, newServices, dev_mode, date=""):
     }
 
     if (not dev_mode):
-        newServices.collection.insert_one(json_data)
+        inserted_data = newServices.collection.insert_one(json_data)
 
-        # Send to Kafka
-        newServices.kafka_producer.send(
-            "news_topic", json.dumps(json_data).encode("utf-8")
+        def delivery_report(err, msg):
+            if err is not None:
+                print(f"Message delivery failed: {err}")
+            else:
+                print(f"Message delivered to {msg.topic()} [{msg.partition()}]")
+
+        json_data['_id'] = str(inserted_data.inserted_id)
+
+        newServices.kafka_producer.produce(
+            "news_topic",
+            key=None,
+            value=json.dumps(json_data).encode("utf-8"),
+            callback=delivery_report
         )
+
+        newServices.kafka_producer.flush()
+        
     else:
         with open("../data_temp/pptv_news_temp", 'a', encoding = "utf-8") as file:
                 json.dump(json_data, file, ensure_ascii = False, indent = 5)

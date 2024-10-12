@@ -54,9 +54,9 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
         thairath_url = get_current_url.getCurrentThairath()
         pptv_url = get_current_url.getCurrentPPTV()
 
-        dailynews_scrape.ScrapeNews(3, dailynews_url, self)
-        thairath_scrape.ScrapeNews(3, thairath_url, self)
-        pptv_scrape.ScrapeNews(3, pptv_url, self)
+        dailynews_scrape.ScrapeNews(10, dailynews_url, self)
+        thairath_scrape.ScrapeNews(10, thairath_url, self)
+        pptv_scrape.ScrapeNews(10, pptv_url, self)
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))

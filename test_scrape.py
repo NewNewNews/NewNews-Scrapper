@@ -27,38 +27,7 @@ def test_thairath(url):
     thairath_scrape.ScrapeNews(-1, url, "", "", True)
 
 if __name__ == "__main__":
-    #urls = test_current_url()
+    urls = test_current_url()
     #test_dailynews(urls[0])
     #test_pptv(urls[1])
-    #test_thairath(urls[2])
-
-    dir = "data/"
-    dailynews = ["dailynews238.json"]
-    thairath = ["thairath14092024.json", "thairath15092024.json"]
-    pptv = ["pptv14092024.json", "pptv15092024.json"]
-
-    dailynews_category = set()
-    thairath_category= set()
-    pptv_category = set()
-
-    for e in dailynews:
-        with open(dir + e, "r", encoding="utf-8") as file:
-            data = json.load(file)
-        dailynews_category = {entry['category'] for entry in data}
-        file.close()
-
-    for e in thairath:
-        with open(dir + e, "r", encoding="utf-8") as file:
-            data = json.load(file)
-        thairath_category = {entry['category'] for entry in data}
-        file.close()
-
-    for e in pptv:
-        with open(dir + e, "r", encoding="utf-8") as file:
-            data = json.load(file)
-        pptv_category = {entry['category'] for entry in data}
-        file.close()
-
-    print(dailynews_category)
-    print(thairath_category)
-    print(pptv_category)
+    test_thairath(urls[2])
