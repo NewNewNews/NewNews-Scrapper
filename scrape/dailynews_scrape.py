@@ -1,28 +1,30 @@
+import json
 import os
 import requests
+
 from bs4 import BeautifulSoup as bs
-import json
+from pymilvus import connections, Collection, DataType
+
 
 central_categories = {
-        'Sports': [
-            'บุนเดสลีกา', 'ลาลีกา', 'พรีเมียร์ลีก', 'กีฬาไทย', 
-            'มวยสากล', 'ทีมชาติไทย', 'ฟุตบอลทั่วไป', 'มวยไทย'
-        ],
-        'Entertainment': [
-            'บันเทิง', 'Daily Beauty', 'นวัตกรรมขนส่ง'
-        ],
-        'Politics & Society': [
-            'การเมือง', 'ประชาสัมพันธ์', 'สังคม', 'ต่างประเทศ'
-        ],
-        'Lifestyle & Culture': [
-            'ท่องเที่ยว-ที่พัก', 'การศึกษา-ศาสนา', 'เศรษฐกิจ'
-        ],
-        'News & Current Affairs': [
-            'เทคโนโลยี', 'อาชญากรรม', 'กทม.', 'ทั่วไทย', 'เกษตร'
-        ]
-    }
+    "Sports": [
+        "บุนเดสลีกา",
+        "ลาลีกา",
+        "พรีเมียร์ลีก",
+        "กีฬาไทย",
+        "มวยสากล",
+        "ทีมชาติไทย",
+        "ฟุตบอลทั่วไป",
+        "มวยไทย",
+    ],
+    "Entertainment": ["บันเทิง", "Daily Beauty", "นวัตกรรมขนส่ง"],
+    "Politics & Society": ["การเมือง", "ประชาสัมพันธ์", "สังคม", "ต่างประเทศ"],
+    "Lifestyle & Culture": ["ท่องเที่ยว-ที่พัก", "การศึกษา-ศาสนา", "เศรษฐกิจ"],
+    "News & Current Affairs": ["เทคโนโลยี", "อาชญากรรม", "กทม.", "ทั่วไทย", "เกษตร"],
+}
 
-def ScrapeNews(n, url, newServices, date="", dev_mode = False):
+
+def ScrapeNews(n, url, newServices, date="", dev_mode=False):
     headers = {"User-Agent": "Mozilla/5.0"}
     res = requests.get(url, headers=headers)
     soup = bs(res.text, "html.parser")
@@ -41,6 +43,7 @@ def ScrapeNews(n, url, newServices, date="", dev_mode = False):
             continue
         if count == n:
             break
+
 
 def CallElement(url, headers, newServices, dev_mode, date=""):
     try:
@@ -76,7 +79,7 @@ def CallElement(url, headers, newServices, dev_mode, date=""):
         }
 
         # Store in MongoDB
-        if (not dev_mode):
+        if not dev_mode:
             inserted_data = newServices.collection.insert_one(json_data)
 
             def delivery_report(err, msg):
@@ -85,26 +88,52 @@ def CallElement(url, headers, newServices, dev_mode, date=""):
                 else:
                     print(f"Message delivered to {msg.topic()} [{msg.partition()}]")
 
-            json_data['_id'] = str(inserted_data.inserted_id)
+            json_data["_id"] = str(inserted_data.inserted_id)
+
+            # Insert data into Milvus
+            if newServices.milvus_client:
+                try:
+                    # Assuming `newServices.milvus_client` is an instance of Milvus client
+                    # and `newServices.collection_name` is the name of the collection in Milvus
+                    entities = [
+                        {
+                            "name": "id",
+                            "type": DataType.INT64,
+                            "values": [int(inserted_data.inserted_id)],
+                        },
+                        {
+                            "name": "embedding",
+                            "type": DataType.FLOAT_VECTOR,
+                            "values": [json_data["data"]],
+                        },
+                    ]
+                    newServices.milvus_client.insert(
+                        collection_name=newServices.collection_name, entities=entities
+                    )
+                except Exception as e:
+                    print(f"Error inserting data into Milvus: {e}")
 
             newServices.kafka_producer.produce(
                 "news_topic",
                 key=None,
                 value=json.dumps(json_data).encode("utf-8"),
-                callback=delivery_report
+                callback=delivery_report,
             )
 
             newServices.kafka_producer.flush()
 
         else:
-            with open("../data_temp/dailynews_news_temp", 'a', encoding = "utf-8") as file:
-                json.dump(json_data, file, ensure_ascii = False, indent = 5)
+            with open(
+                "../data_temp/dailynews_news_temp", "a", encoding="utf-8"
+            ) as file:
+                json.dump(json_data, file, ensure_ascii=False, indent=5)
 
     except Exception as e:
         print(f"Error processing URL {url}: {e}")
+
 
 def map_category(news_category):
     for central, categories in central_categories.items():
         if news_category in categories:
             return central
-    return 'Etc'
+    return "Etc"

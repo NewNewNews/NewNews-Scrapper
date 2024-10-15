@@ -43,3 +43,10 @@ proto: $(GOOGLE_APIS_DIR)
 # 		--python_out=. `
 # 		--grpc_python_out=. `
 # 		$(PROTO_DIR)/news_service.proto
+
+start:
+	docker compose up -d
+	python main.py
+
+client:
+	python client.py
