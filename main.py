@@ -70,7 +70,6 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
     def ScrapeNews(self, request, context):
         try:
             self.CreateNewsElement()
-            print(request)
             return news_service_pb2.ScrapeNewsResponse(success=True)
         except Exception as e:
             print(f"Error scraping news: {str(e)}")
