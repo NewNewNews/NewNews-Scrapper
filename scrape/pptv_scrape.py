@@ -62,9 +62,9 @@ def CallElement(url, headers, newServices, dev_mode, date=""):
     soup = bs(res.text, "lxml")
     date = soup.find("time")
     if date == None:
-        date = getDate()
+        date = convert_thai_date_to_iso(getDate())
     else:
-        date = date.getText()
+        date = convert_thai_date_to_iso(date.getText())
 
     content = soup.find(
         "div", {"class": re.compile("content-details__body|sport_detail__body")}
@@ -121,6 +121,23 @@ def getDate():
     thai_month = thai_months[today.month]
     formatted_thai_date = f"{today.day} {thai_month} {thai_year}"
     return formatted_thai_date
+
+def convert_thai_date_to_iso(thai_date: str) -> str:
+    thai_months = {
+        "ม.ค.": "01", "ก.พ.": "02", "มี.ค.": "03", "เม.ย.": "04",
+        "พ.ค.": "05", "มิ.ย.": "06", "ก.ค.": "07", "ส.ค.": "08",
+        "ก.ย.": "09", "ต.ค.": "10", "พ.ย.": "11", "ธ.ค.": "12"
+    }
+    
+    # Split the date into parts
+    day, month_str, year_str, time_str = thai_date.split(" ")
+    year = str(int(year_str) - 543)  # Convert from Buddhist year to Gregorian year
+    month = thai_months[month_str]  # Get the month number
+
+    # Combine into ISO format
+    formatted_date = f"{year}-{month}-{day}"
+    
+    return formatted_date
 
 def map_category(news_category):
     for central, categories in central_categories.items():
