@@ -51,8 +51,6 @@ def CallElement(url, headers, newServices, dev_mode, date=""):
     if (content == None): content = soup.find("div", {"itemprop": "articleBody"})
     if (content == None): return False
 
-    print(date)
-    print(content)
     data = content.select("p")
     data = " ".join(p.get_text(strip=True) for p in data)
     data = data.replace(",", " ")
