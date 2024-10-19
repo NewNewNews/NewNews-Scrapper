@@ -6,15 +6,24 @@ import re
 import urllib.parse
 from datetime import date
 
-central_categories = {
-        'Sports': ['sport'],
-        'Entertainment': ['บันเทิง'],
-        'Politics & Society': ['การเมือง', 'อาชญากรรม', 'สังคม'],
-        'Lifestyle & Culture': ['ท่องเที่ยว-ที่พัก'],
-        'News & Current Affairs': ['ต่างประเทศ']
-    }
+import json
+from confluent_kafka import Producer, KafkaError
+from confluent_kafka.serialization import (
+    SerializationContext,
+    MessageField,
+)
+from proto import news_message_pb2
 
-def ScrapeNews(n, url, newServices, date="", dev_mode = False):
+central_categories = {
+    "Sports": ["sport"],
+    "Entertainment": ["บันเทิง"],
+    "Politics & Society": ["การเมือง", "อาชญากรรม", "สังคม"],
+    "Lifestyle & Culture": ["ท่องเที่ยว-ที่พัก"],
+    "News & Current Affairs": ["ต่างประเทศ"],
+}
+
+
+def ScrapeNews(n, url, newServices, date="", dev_mode=False):
     headers = {"User-Agent": "Mozilla/5.0"}
     res = requests.get(url, headers=headers)
     soup = bs(res.text, "lxml")
@@ -46,6 +55,7 @@ def ScrapeNews(n, url, newServices, date="", dev_mode = False):
             continue
         if count == n:
             break
+
 
 def CallElement(url, headers, newServices, dev_mode, date=""):
     category = url.replace("https://www.pptvhd36.com/", "").split("/")
@@ -83,8 +93,15 @@ def CallElement(url, headers, newServices, dev_mode, date=""):
         "publisher": "PPTV",
         "url": url,
     }
+    news_message = news_message_pb2.NewsMessage(
+        data=json_data["data"],
+        category=json_data["category"],
+        date=json_data["date"],
+        publisher=json_data["publisher"],
+        url=json_data["url"],
+    )
 
-    if (not dev_mode):
+    if not dev_mode:
         inserted_data = newServices.collection.insert_one(json_data)
 
         def delivery_report(err, msg):
@@ -93,28 +110,45 @@ def CallElement(url, headers, newServices, dev_mode, date=""):
             else:
                 print(f"Message delivered to {msg.topic()} [{msg.partition()}]")
 
-        json_data['_id'] = str(inserted_data.inserted_id)
+        json_data["_id"] = str(inserted_data.inserted_id)
 
-        newServices.kafka_producer.produce(
-            "news_topic",
-            key=None,
-            value=json.dumps(json_data).encode("utf-8"),
-            callback=delivery_report
-        )
+        topic = "news_topic"
+        try:
+            newServices.kafka_producer.produce(
+                topic=topic,
+                key=newServices.string_serializer(json_data["category"]),
+                value=newServices.protobuf_serializer(
+                    news_message, SerializationContext(topic, MessageField.VALUE)
+                ),
+                on_delivery=newServices.delivery_report,
+            )
+            print("already send")
+        except KafkaError as e:
+            print(f"Failed to send message to Kafka: {e}")
 
-        newServices.kafka_producer.flush()
-        
     else:
-        with open("../data_temp/pptv_news_temp", 'a', encoding = "utf-8") as file:
-                json.dump(json_data, file, ensure_ascii = False, indent = 5)
+        with open("../data_temp/pptv_news_temp", "a", encoding="utf-8") as file:
+            json.dump(json_data, file, ensure_ascii=False, indent=5)
+
 
 def needsEncoding(s):
     return s[0] == "%" and s[3] == "%"
 
+
 def getDate():
     thai_months = {
-    1: "ม.ค.", 2: "ก.พ.", 3: "มี.ค.", 4: "เม.ย.", 5: "พ.ค.", 6: "มิ.ย.",
-    7: "ก.ค.", 8: "ส.ค.", 9: "ก.ย.", 10: "ต.ค.", 11: "พ.ย.", 12: "ธ.ค."
+        1: "ม.ค.",
+        2: "ก.พ.",
+        3: "มี.ค.",
+        4: "เม.ย.",
+        5: "พ.ค.",
+        6: "มิ.ย.",
+        7: "ก.ค.",
+        8: "ส.ค.",
+        9: "ก.ย.",
+        10: "ต.ค.",
+        11: "พ.ย.",
+        12: "ธ.ค.",
     }
     today = date.today()
     thai_year = today.year + 543
@@ -122,8 +156,9 @@ def getDate():
     formatted_thai_date = f"{today.day} {thai_month} {thai_year}"
     return formatted_thai_date
 
+
 def map_category(news_category):
     for central, categories in central_categories.items():
         if news_category in categories:
             return central
-    return 'Etc'
+    return "Etc"

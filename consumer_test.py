@@ -30,7 +30,7 @@ def main():
     }
 
     consumer = Consumer(consumer_conf)
-    consumer.subscribe(["scraped-news"])
+    consumer.subscribe(["news_topic"])
 
     while True:
         msg = consumer.poll(1.0)
