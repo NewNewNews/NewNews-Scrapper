@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup as bs
 import json
 import re
 import urllib.parse
-from datetime import date
+from datetime import date, datetime
 
 central_categories = {
         'Sports': ['sport'],
@@ -65,6 +65,7 @@ def CallElement(url, headers, newServices, dev_mode, date=""):
         date = getDate()
     else:
         date = date.getText()
+    date = formatDate(date)
 
     content = soup.find(
         "div", {"class": re.compile("content-details__body|sport_detail__body")}
@@ -121,6 +122,30 @@ def getDate():
     thai_month = thai_months[today.month]
     formatted_thai_date = f"{today.day} {thai_month} {thai_year}"
     return formatted_thai_date
+
+def formatDate(input_date):
+    input_date = input_date.replace(",","")
+    thai_months = {
+        "ม.ค.": "01", "ก.พ.": "02", "มี.ค.": "03", "เม.ย.": "04", 
+        "พ.ค.": "05", "มิ.ย.": "06", "ก.ค.": "07", "ส.ค.": "08", 
+        "ก.ย.": "09", "ต.ค.": "10", "พ.ย.": "11", "ธ.ค.": "12"
+    }
+
+    if "น." in input_date:
+        date_part, time_part = input_date.rsplit(" ", 1)
+        time_part = time_part.replace("น.", "")
+    else:
+        date_part = input_date
+        time_part = "00:00"
+    
+    day, month_thai, buddhist_year = date_part.split()
+    gregorian_year = int(buddhist_year) - 543
+    month = thai_months[month_thai]
+    date_time_str = f"{gregorian_year}-{month}-{day} {time_part}"
+    dt = datetime.strptime(date_time_str, "%Y-%m-%d %H:%M")
+    iso_format = dt.isoformat() + "+00:00"
+
+    return iso_format
 
 def map_category(news_category):
     for central, categories in central_categories.items():
