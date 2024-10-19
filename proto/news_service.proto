@@ -8,6 +8,7 @@ service NewsService {
   rpc ScrapeNews(ScrapeNewsRequest) returns (ScrapeNewsResponse) {}
   rpc GetNews(GetNewsRequest) returns (GetNewsResponse) {}
   rpc GetOneNews(GetOneNewsRequest) returns (GetNewsResponse);
+  rpc GetTodayNews() returns (GetNewsResponse) {}
   rpc UpdateNews(UpdateNewsRequest) returns (UpdateNewsResponse) {}
   rpc DeleteNews(DeleteNewsRequest) returns (DeleteNewsResponse) {}
 }

@@ -1,7 +1,9 @@
 import os
 import requests
-from bs4 import BeautifulSoup as bs
 import json
+from datetime import datetime
+
+from bs4 import BeautifulSoup as bs
 
 central_categories = {
         'Sports': [
@@ -34,6 +36,11 @@ def ScrapeNews(n, url, newServices, date="", dev_mode = False):
         try:
             loc = e.find("loc").text
             lastmod = e.find("lastmod").text if e.find("lastmod") else ""
+            if lastmod != "":
+                lastmod = datetime.fromisoformat(lastmod)
+                lastmod = lastmod.strftime("%Y-%m-%dT%H:%M:%S")
+
+            print('lastmod:', lastmod)
             CallElement(loc, headers, newServices, dev_mode, lastmod)
             count += 1
         except Exception as e:

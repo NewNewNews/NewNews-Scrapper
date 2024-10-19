@@ -24,26 +24,32 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
             api_version=(2, 0, 2)
         )  # "localhost:9092"   "kafka:9092"
         
-        self.vector_db = MilvusClient("http://localhost:19530")
+        self.vector_db = MilvusClient("http://localhost:19530", token="root:Milvus")
         # self.vector_db = MilvusClient("milvus/milvus_demo.db")
         
         self.vector_collection = "news_collection"
         
         self.embedding_func = BGEM3EmbeddingFunction(
             model_name='BAAI/bge-m3', # Specify the model name
-            device='cpu', # Specify the device to use, e.g., 'cpu' or 'cuda:0'
+            device='cuda:0', # Specify the device to use, e.g., 'cpu' or 'cuda:0'
             use_fp16=False # Specify whether to use fp16. Set to `False` if `device` is `cpu`.
         )
 
     def GetNews(self, request, context):
+        import datetime
+        today = datetime.date.today()
+        print(today)
+
         query = {}
         if request.category:
             query["category"] = request.category
         if request.date:
             query["date"] = request.date
 
-        news_items = self.collection.find(query)
+        news_items = self.collection.find(query) # return a cursor
+        
         response = news_service_pb2.GetNewsResponse()
+
         for item in news_items:
             news_item = response.news.add()
             news_item.data = item["data"]
@@ -51,6 +57,29 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
             news_item.date = item["date"]
             news_item.publisher = item["publisher"]
             news_item.url = item["url"]
+
+        return response
+    
+
+    def GetTodayNews(self, request, context):
+        query = {}
+        if request.category:
+            query["category"] = request.category
+        if request.date:
+            query["date"] = request.date
+
+        news_items = self.collection.find(query) # return a cursor
+        
+        response = news_service_pb2.GetNewsResponse()
+
+        for item in news_items:
+            news_item = response.news.add()
+            news_item.data = item["data"]
+            news_item.category = item["category"]
+            news_item.date = item["date"]
+            news_item.publisher = item["publisher"]
+            news_item.url = item["url"]
+
         return response
 
     def ScrapeNews(self, request, context):
@@ -67,15 +96,25 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
         thairath_url = get_current_url.getCurrentThairath()
         pptv_url = get_current_url.getCurrentPPTV()
 
-        dailynews_scrape.ScrapeNews(3, dailynews_url, self)
-        # thairath_scrape.ScrapeNews(3, thairath_url, self)
-        # pptv_scrape.ScrapeNews(3, pptv_url, self)
+        dailynews_scrape.ScrapeNews(1, dailynews_url, self)
+        thairath_scrape.ScrapeNews(1, thairath_url, self)
+        pptv_scrape.ScrapeNews(1, pptv_url, self)
+        
+        # process labels
+        
+        
+        # query today news
+        
+        
+        # push mongo with labels
+        
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     news_service_pb2_grpc.add_NewsServiceServicer_to_server(NewsService(), server)
     server.add_insecure_port("[::]:50051")
     server.start()
+    print("Server started on port 50051")
     server.wait_for_termination()
 
 if __name__ == "__main__":

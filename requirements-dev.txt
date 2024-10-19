@@ -1,0 +1,11 @@
+grpcio
+grpcio-tools
+requests
+beautifulsoup4
+kafka-python-ng
+confluent-kafka
+pymongo
+prisma
+pymilvus
+pymilvus[model]
+lxml

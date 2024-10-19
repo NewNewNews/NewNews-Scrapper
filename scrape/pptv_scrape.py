@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup as bs
 import json
 import re
 import urllib.parse
-from datetime import date
+from datetime import date, datetime
 
 central_categories = {
         'Sports': ['sport'],
@@ -61,10 +61,14 @@ def CallElement(url, headers, newServices, dev_mode, date=""):
     res = requests.get(url, headers=headers)
     soup = bs(res.text, "lxml")
     date = soup.find("time")
+    print('pptv date:', date)
     if date == None:
         date = getDate()
     else:
         date = date.getText()
+        date = date.replace("2567", str(2567 - 543))
+        date = datetime.strptime(date, "%d %b %Y %H:%Mน.")
+        date = date.isoformat()
 
     content = soup.find(
         "div", {"class": re.compile("content-details__body|sport_detail__body")}

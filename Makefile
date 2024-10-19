@@ -44,7 +44,18 @@ proto: $(GOOGLE_APIS_DIR)
 # 		--grpc_python_out=. `
 # 		$(PROTO_DIR)/news_service.proto
 
+network:
+	docker network create my-custom-network
+
 start:
+	docker compose up -d
+	python main.py
+
+run:
+	python main.py
+	
+restart:
+	docker compose down
 	docker compose up -d
 	python main.py
 

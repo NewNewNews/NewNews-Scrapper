@@ -3,7 +3,7 @@ import requests
 from bs4 import BeautifulSoup as bs
 import json
 import re
-from datetime import date
+from datetime import date, datetime
 
 central_categories = {
     "Sports": ["sport"],
@@ -45,10 +45,14 @@ def CallElement(url, headers, newServices, dev_mode, date=""):
     res = requests.get(url, headers=headers)
     soup = bs(res.text, "html.parser")
     date = soup.find("div", class_=re.compile(r"__item_article-date.*\bcss\b"))
+    print('thairath date:', date)
     if date == None:
         date = getDate()
     else:
         date = date.getText()
+        date = date.replace("2567", str(2567 - 543))
+        date = datetime.strptime(date, "%d %b %Y %H:%M น.")
+        date = date.isoformat()
 
     content = soup.find("div", {"itemprop": "article-body"})
     if content == None:
