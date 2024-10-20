@@ -79,6 +79,7 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
         dailynews_url = get_current_url.getCurrentDailynews()
         thairath_url = get_current_url.getCurrentThairath()
         pptv_url = get_current_url.getCurrentPPTV()
+        
         count = 3
 
         self.kafka_producer.poll(0.0)
