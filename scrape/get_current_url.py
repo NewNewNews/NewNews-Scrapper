@@ -4,13 +4,12 @@ import json
 import re
 import urllib.parse
 from datetime import datetime
-
 headers = {"User-Agent": "Mozilla/5.0"}
 
 def getCurrentDailynews():
     head_url = "https://www.dailynews.co.th/sitemap_index.xml"
     res = requests.get(head_url, headers=headers)
-    soup = bs(res.text, "lxml")
+    soup = bs(res.text, "lxml-xml")
 
     urls = []
     for loc in soup.select("loc"):

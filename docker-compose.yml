@@ -1,62 +1,5 @@
 version: "3.8"
 services:
-  # gateway:
-  #   build: .
-  #   ports:
-  #     - "8080:8080"
-  #   depends_on:
-  #     - db
-  #     - news_service
-  #   environment:
-  #     - DATABASE_URL=postgresql://user:password@db:5432/gateway?schema=public
-
-  # db:
-  #   image: postgres:13
-  #   environment:
-  #     - POSTGRES_USER=user
-  #     - POSTGRES_PASSWORD=password
-  #     - POSTGRES_DB=gateway
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  # zookeeper:
-  #   image: confluentinc/cp-zookeeper:latest
-  #   environment:
-  #     ZOOKEEPER_CLIENT_PORT: 2181
-  #     ZOOKEEPER_TICK_TIME: 2000
-  #   networks:
-  #     - my-custom-network
-  # kafka:
-  #   image: confluentinc/cp-kafka:latest
-  #   depends_on:
-  #     - zookeeper
-  #   ports:
-  #     - "9092:9092"
-  #   expose:
-  #     - 9092
-  #   environment:
-  #     ZOOKEEPER_SASL_ENABLED: "false"
-  #     KAFKA_BROKER_ID: 1
-  #     KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-  #     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-  #   networks:
-  #     - my-custom-network
-
-  # on working
-  # news_service:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   environment:
-  #     MONGO_URI: mongodb://mongodb:27017/
-  #     KAFKA_BROKER: kafka:9092
-  #   depends_on:
-  #     - kafka-0
-  #     - kafka-1
-  #     - kafka-2
-  #     - mongodb
-  #   networks:
-  #     - my-custom-network
   broker:
     image: confluentinc/cp-kafka:latest
     hostname: broker
@@ -107,6 +50,8 @@ services:
       # KRaft mode requires a unique CLUSTER_ID
       # Use "bin/kafka-storage.sh random-uuid" to generate this value.
       CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk" # Replace with a generated UUID
+    networks:
+      - app_network
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -115,6 +60,8 @@ services:
     environment:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: broker:29092
+    networks:
+      - app_network
 
   schema-registry:
     image: confluentinc/cp-schema-registry:latest
@@ -128,15 +75,17 @@ services:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "broker:29092"
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+    networks:
+      - app_network
 
-  mongodb:
-    image: mongo:latest
+  mongo_scrape_service:
+    image: mongo:6.0
     ports:
       - "27017:27017"
     volumes:
-      - mongodb_data:/data/db
+      - mongo_scrape_service_data:/data/db
     networks:
-      - my-custom-network
+      - app_network
 
   kafka-exporter:
     image: danielqsj/kafka-exporter:latest
@@ -150,6 +99,9 @@ services:
       - --web.listen-address=:9308
     ports:
       - "9308:9308"
+    restart: on-failure
+    networks:
+      - app_network
 
   prometheus:
     image: prom/prometheus:latest
@@ -162,6 +114,8 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
+    networks:
+      - app_network
 
   grafana:
     image: grafana/grafana:latest
@@ -175,6 +129,38 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
       - grafana-storage:/var/lib/grafana
+    networks:
+      - app_network
+
+  news_service:
+    hostname: news_service
+    container_name: news_service
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "50051:50051"
+    environment:
+      - MONGO_URI=mongodb://mongo_scrape_service:27017/
+      - KAFKA_BROKER=broker:29092
+      - PORT=50051
+      - SCHEMA_REGISTRY_URL=http://schema-registry:8081
+    depends_on:
+      - mongo_scrape_service
+      - broker
+      - kafka-ui
+      - schema-registry
+    networks:
+      - app_network
+volumes:
+  mongo_scrape_service_data:
+  volume1:
+  grafana-storage:
+
+networks:
+  app_network:
+    external: true
+
   # kafka-ui:
   #   container_name: kafka-ui
   #   image: provectuslabs/kafka-ui:latest
@@ -207,13 +193,61 @@ services:
   #     "
   #   networks:
   #     - kafka-net
-volumes:
-  mongodb_data:
-  volume1:
-  grafana-storage:
 
-networks:
-  my-custom-network:
-    external: true
-  kafka-net:
-    driver: bridge
+  # gateway:
+  #   build: .
+  #   ports:
+  #     - "8080:8080"
+  #   depends_on:
+  #     - db
+  #     - news_service
+  #   environment:
+  #     - DATABASE_URL=postgresql://user:password@db:5432/gateway?schema=public
+
+  # db:
+  #   image: postgres:13
+  #   environment:
+  #     - POSTGRES_USER=user
+  #     - POSTGRES_PASSWORD=password
+  #     - POSTGRES_DB=gateway
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  # zookeeper:
+  #   image: confluentinc/cp-zookeeper:latest
+  #   environment:
+  #     ZOOKEEPER_CLIENT_PORT: 2181
+  #     ZOOKEEPER_TICK_TIME: 2000
+  #   networks:
+  #     - app_network
+  # kafka:
+  #   image: confluentinc/cp-kafka:latest
+  #   depends_on:
+  #     - zookeeper
+  #   ports:
+  #     - "9092:9092"
+  #   expose:
+  #     - 9092
+  #   environment:
+  #     ZOOKEEPER_SASL_ENABLED: "false"
+  #     KAFKA_BROKER_ID: 1
+  #     KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+  #     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  #   networks:
+  #     - app_network
+
+  # on working
+  # news_service:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   environment:
+  #     MONGO_URI: mongo_scrape_service://mongo_scrape_service:27017/
+  #     KAFKA_BROKER: kafka:9092
+  #   depends_on:
+  #     - kafka-0
+  #     - kafka-1
+  #     - kafka-2
+  #     - mongo_scrape_service
+  #   networks:
+  #     - app_network

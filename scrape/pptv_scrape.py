@@ -5,7 +5,6 @@ import json
 import re
 import urllib.parse
 from datetime import date
-
 import json
 from confluent_kafka import Producer, KafkaError
 from confluent_kafka.serialization import (
@@ -26,7 +25,7 @@ central_categories = {
 def ScrapeNews(n, url, newServices, date="", dev_mode=False):
     headers = {"User-Agent": "Mozilla/5.0"}
     res = requests.get(url, headers=headers)
-    soup = bs(res.text, "lxml")
+    soup = bs(res.text, "lxml-xml")
 
     allURLsSoup = soup.select("url")
     allURLs = []
@@ -69,7 +68,7 @@ def CallElement(url, headers, newServices, dev_mode, date=""):
     category = map_category(category)
 
     res = requests.get(url, headers=headers)
-    soup = bs(res.text, "lxml")
+    soup = bs(res.text, "lxml-xml")
     date = soup.find("time")
     if date == None:
         date = convert_thai_date_to_iso(getDate())

@@ -2,7 +2,6 @@ import os
 import requests
 from bs4 import BeautifulSoup as bs
 import json
-
 import json
 from confluent_kafka import Producer, KafkaError
 from confluent_kafka.serialization import (
@@ -53,7 +52,7 @@ def ScrapeNews(n, url, newServices, date="", dev_mode=False):
 def CallElement(url, headers, newServices, dev_mode, date=""):
     try:
         res = requests.get(url, headers=headers)
-        soup = bs(res.text, "lxml")
+        soup = bs(res.text, "lxml-xml")
 
         # Extract the category
         category = (

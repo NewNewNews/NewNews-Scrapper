@@ -23,11 +23,11 @@ from proto import news_message_pb2
 class NewsService(news_service_pb2_grpc.NewsServiceServicer):
     def __init__(self):
         self.mongo_client = MongoClient(
-            "mongodb://localhost:27017/"
-        )  # mongodb://mongodb:27017/
+            os.environ.get("MONGO_URI", "mongodb://localhost:27017/")
+        )
         self.db = self.mongo_client["news_db"]
         self.collection = self.db["news"]
-        self.kafka_producer = Producer({"bootstrap.servers": "localhost:9092"})
+        self.kafka_producer = Producer({"bootstrap.servers": os.environ.get("KAFKA_BROKER", "localhost:9092")})
         schema_registry_url = os.environ.get(
             "SCHEMA_REGISTRY_URL", "http://localhost:8081"
         )
@@ -92,7 +92,7 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     news_service_pb2_grpc.add_NewsServiceServicer_to_server(NewsService(), server)
-    server.add_insecure_port("[::]:50051")
+    server.add_insecure_port(f"[::]:{os.getenv('PORT', '50051')}")
     server.start()
     server.wait_for_termination()
 
