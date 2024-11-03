@@ -81,7 +81,7 @@ services:
   mongo_scrape_service:
     image: mongo:6.0
     ports:
-      - "27017:27017"
+      - "5400:27017"
     volumes:
       - mongo_scrape_service_data:/data/db
     networks:
@@ -141,7 +141,7 @@ services:
     ports:
       - "50051:50051"
     environment:
-      - MONGO_URI=mongodb://mongo_scrape_service:27017/
+      - MONGO_URI=mongodb://mongo_scrape_service:5400/
       - KAFKA_BROKER=broker:29092
       - PORT=50051
       - SCHEMA_REGISTRY_URL=http://schema-registry:8081
