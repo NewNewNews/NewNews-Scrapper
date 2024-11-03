@@ -51,7 +51,7 @@ def CallElement(url, headers, newServices, dev_mode, date=""):
     category = map_category(category)
 
     res = requests.get(url, headers=headers)
-    soup = bs(res.text, "html.parser")
+    soup = bs(res.text, "lxml-xml") 
     date = soup.find("div", class_=re.compile(r"__item_article-date.*\bcss\b"))
     if (date == None):
         date = convert_thai_date_to_iso(getDate())

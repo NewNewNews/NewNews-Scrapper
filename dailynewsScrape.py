@@ -27,7 +27,7 @@ def CreateNewsElement(url, date = ""):
         json.dump(json_data, file, ensure_ascii=False, indent=5)
 
 res = requests.get(xmlUrl, headers = headers)
-soup = bs(res.text, 'html.parser')
+soup = bs(res.text, 'lxml-xml')
 allURLsSoup = soup.select("url")
 
 for e in allURLsSoup:

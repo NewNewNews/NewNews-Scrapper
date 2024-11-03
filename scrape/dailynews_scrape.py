@@ -31,7 +31,7 @@ central_categories = {
 def ScrapeNews(n, url, newServices, date="", dev_mode=False):
     headers = {"User-Agent": "Mozilla/5.0"}
     res = requests.get(url, headers=headers)
-    soup = bs(res.text, "html.parser")
+    soup = bs(res.text, "lxml-xml")
 
     allURLsSoup = soup.select("url")
 
