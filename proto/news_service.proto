@@ -42,12 +42,10 @@ message NewsItem {
 }
 
 message UpdateNewsRequest {
-  string id = 1;        // The ID of the news item to update
+  string url = 1;       // Optional: update URL news
   string data = 2;      // Optional: new data for the news item
   string category = 3;  // Optional: new category
   string date = 4;      // Optional: new date
-  string publisher = 5; // Optional: new publisher
-  string url = 6;       // Optional: new URL
 }
 
 message UpdateNewsResponse {
@@ -56,7 +54,7 @@ message UpdateNewsResponse {
 }
 
 message DeleteNewsRequest {
-  string id = 1;
+  string url = 1;
 }
 
 message DeleteNewsResponse {

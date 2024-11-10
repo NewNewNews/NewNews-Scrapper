@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x18proto/news_service.proto\x12\x04news\"0\n\x0eGetNewsRequest\x12\x10\n\x08\x63\x61tegory\x18\x01 \x01(\t\x12\x0c\n\x04\x64\x61te\x18\x02 \x01(\t\"\x1f\n\x11GetOneNewsRequest\x12\n\n\x02id\x18\x01 \x01(\t\"/\n\x0fGetNewsResponse\x12\x1c\n\x04news\x18\x01 \x03(\x0b\x32\x0e.news.NewsItem\" \n\x11ScrapeNewsRequest\x12\x0b\n\x03url\x18\x01 \x01(\t\"%\n\x12ScrapeNewsResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\"X\n\x08NewsItem\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\t\x12\x10\n\x08\x63\x61tegory\x18\x02 \x01(\t\x12\x0c\n\x04\x64\x61te\x18\x03 \x01(\t\x12\x11\n\tpublisher\x18\x04 \x01(\t\x12\x0b\n\x03url\x18\x05 \x01(\t\"m\n\x11UpdateNewsRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\t\x12\x10\n\x08\x63\x61tegory\x18\x03 \x01(\t\x12\x0c\n\x04\x64\x61te\x18\x04 \x01(\t\x12\x11\n\tpublisher\x18\x05 \x01(\t\x12\x0b\n\x03url\x18\x06 \x01(\t\"6\n\x12UpdateNewsResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\"\x1f\n\x11\x44\x65leteNewsRequest\x12\n\n\x02id\x18\x01 \x01(\t\"6\n\x12\x44\x65leteNewsResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t2\xce\x02\n\x0bNewsService\x12\x41\n\nScrapeNews\x12\x17.news.ScrapeNewsRequest\x1a\x18.news.ScrapeNewsResponse\"\x00\x12\x38\n\x07GetNews\x12\x14.news.GetNewsRequest\x1a\x15.news.GetNewsResponse\"\x00\x12<\n\nGetOneNews\x12\x17.news.GetOneNewsRequest\x1a\x15.news.GetNewsResponse\x12\x41\n\nUpdateNews\x12\x17.news.UpdateNewsRequest\x1a\x18.news.UpdateNewsResponse\"\x00\x12\x41\n\nDeleteNews\x12\x17.news.DeleteNewsRequest\x1a\x18.news.DeleteNewsResponse\"\x00\x42\x30Z.github.com/yourusername/gateway/internal/protob\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x18proto/news_service.proto\x12\x04news\"0\n\x0eGetNewsRequest\x12\x10\n\x08\x63\x61tegory\x18\x01 \x01(\t\x12\x0c\n\x04\x64\x61te\x18\x02 \x01(\t\"\x1f\n\x11GetOneNewsRequest\x12\n\n\x02id\x18\x01 \x01(\t\"/\n\x0fGetNewsResponse\x12\x1c\n\x04news\x18\x01 \x03(\x0b\x32\x0e.news.NewsItem\" \n\x11ScrapeNewsRequest\x12\x0b\n\x03url\x18\x01 \x01(\t\"%\n\x12ScrapeNewsResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\"X\n\x08NewsItem\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\t\x12\x10\n\x08\x63\x61tegory\x18\x02 \x01(\t\x12\x0c\n\x04\x64\x61te\x18\x03 \x01(\t\x12\x11\n\tpublisher\x18\x04 \x01(\t\x12\x0b\n\x03url\x18\x05 \x01(\t\"N\n\x11UpdateNewsRequest\x12\x0b\n\x03url\x18\x01 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\t\x12\x10\n\x08\x63\x61tegory\x18\x03 \x01(\t\x12\x0c\n\x04\x64\x61te\x18\x04 \x01(\t\"6\n\x12UpdateNewsResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\" \n\x11\x44\x65leteNewsRequest\x12\x0b\n\x03url\x18\x01 \x01(\t\"6\n\x12\x44\x65leteNewsResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t2\xce\x02\n\x0bNewsService\x12\x41\n\nScrapeNews\x12\x17.news.ScrapeNewsRequest\x1a\x18.news.ScrapeNewsResponse\"\x00\x12\x38\n\x07GetNews\x12\x14.news.GetNewsRequest\x1a\x15.news.GetNewsResponse\"\x00\x12<\n\nGetOneNews\x12\x17.news.GetOneNewsRequest\x1a\x15.news.GetNewsResponse\x12\x41\n\nUpdateNews\x12\x17.news.UpdateNewsRequest\x1a\x18.news.UpdateNewsResponse\"\x00\x12\x41\n\nDeleteNews\x12\x17.news.DeleteNewsRequest\x1a\x18.news.DeleteNewsResponse\"\x00\x42\x30Z.github.com/yourusername/gateway/internal/protob\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -45,13 +45,13 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_NEWSITEM']._serialized_start=239
   _globals['_NEWSITEM']._serialized_end=327
   _globals['_UPDATENEWSREQUEST']._serialized_start=329
-  _globals['_UPDATENEWSREQUEST']._serialized_end=438
-  _globals['_UPDATENEWSRESPONSE']._serialized_start=440
-  _globals['_UPDATENEWSRESPONSE']._serialized_end=494
-  _globals['_DELETENEWSREQUEST']._serialized_start=496
-  _globals['_DELETENEWSREQUEST']._serialized_end=527
-  _globals['_DELETENEWSRESPONSE']._serialized_start=529
-  _globals['_DELETENEWSRESPONSE']._serialized_end=583
-  _globals['_NEWSSERVICE']._serialized_start=586
-  _globals['_NEWSSERVICE']._serialized_end=920
+  _globals['_UPDATENEWSREQUEST']._serialized_end=407
+  _globals['_UPDATENEWSRESPONSE']._serialized_start=409
+  _globals['_UPDATENEWSRESPONSE']._serialized_end=463
+  _globals['_DELETENEWSREQUEST']._serialized_start=465
+  _globals['_DELETENEWSREQUEST']._serialized_end=497
+  _globals['_DELETENEWSRESPONSE']._serialized_start=499
+  _globals['_DELETENEWSRESPONSE']._serialized_end=553
+  _globals['_NEWSSERVICE']._serialized_start=556
+  _globals['_NEWSSERVICE']._serialized_end=890
 # @@protoc_insertion_point(module_scope)

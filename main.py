@@ -102,26 +102,26 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
             {"$set": update_data}
         )
        
-        if result.matched_count == 0:
-            return self.UpdateNewsResponse(success=False, message = "Can't find news with URL")
-        return self.UpdateNewsResponse(success=True, message = "Update complete")
+        if result.modified_count == 0:
+            return news_service_pb2.UpdateNewsResponse(success=False, message = "Can't find news with URL")
+        return news_service_pb2.UpdateNewsResponse(success=True, message = "Update complete")
 
     def DeleteNews(self, request, context):
         try:
             if request.url:
                 filter_criteria = {"url": request.url}
             else:
-                return self.DeleteNewsResponse(success=False, message = "Missing URL")
+                return news_service_pb2.DeleteNewsResponse(success=False, message = "Missing URL")
 
             result = self.collection.delete_one(filter_criteria)
 
             if result.deleted_count == 0:
-                return self.DeleteNewsResponse(success=False, message = "Can't find news with URL")
+                return news_service_pb2.DeleteNewsResponse(success=False, message = "Can't find news with URL")
 
-            return self.DeleteNewsResponse(success=True, message = "Delete complete")
+            return news_service_pb2.DeleteNewsResponse(success=True, message = "Delete complete")
 
         except Exception as e:
-            return self.UpdateNewsResponse(success=False, message = "Error with delete news")
+            return news_service_pb2.UpdateNewsResponse(success=False, message = "Error with delete news")
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
