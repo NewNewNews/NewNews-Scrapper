@@ -1,4 +1,17 @@
-version: "3.8"
+x-healthcheck-defaults: &healthcheck-defaults
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 40s
+
+x-restart-policy: &restart-policy
+  deploy:
+    restart_policy:
+      condition: on-failure
+      delay: 10s
+      max_attempts: 3
+      window: 120s
+
 services:
   broker:
     image: confluentinc/cp-kafka:latest
@@ -52,6 +65,16 @@ services:
       CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk" # Replace with a generated UUID
     networks:
       - app_network
+    healthcheck:
+      <<: *healthcheck-defaults
+      test:
+        [
+          "CMD",
+          "kafka-broker-api-versions",
+          "--bootstrap-server",
+          "broker:29092",
+        ]
+    <<: *restart-policy
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -62,13 +85,18 @@ services:
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: broker:29092
     networks:
       - app_network
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080"]
+    <<: *restart-policy
+    depends_on:
+      broker:
+        condition: service_healthy
 
   schema-registry:
     image: confluentinc/cp-schema-registry:latest
     hostname: schema-registry
     container_name: schema-registry
-    depends_on:
-      - broker
     ports:
       - "8081:8081"
     environment:
@@ -77,6 +105,13 @@ services:
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
     networks:
       - app_network
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "curl", "-f", "http://localhost:8081/subjects"]
+    <<: *restart-policy
+    depends_on:
+      broker:
+        condition: service_healthy
 
   mongo_scrape_service:
     image: mongo:6.0
@@ -86,14 +121,14 @@ services:
       - mongo_scrape_service_data:/data/db
     networks:
       - app_network
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+    <<: *restart-policy
 
   kafka-exporter:
     image: danielqsj/kafka-exporter:latest
     container_name: kafka-exporter
-    depends_on:
-      - broker
-      - schema-registry
-      - kafka-ui
     command:
       - --kafka.server=broker:29092
       - --web.listen-address=:9308
@@ -102,28 +137,38 @@ services:
     restart: on-failure
     networks:
       - app_network
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9308/metrics"]
+    <<: *restart-policy
+    depends_on:
+      broker:
+        condition: service_healthy
 
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
     ports:
       - "9090:9090"
-    depends_on:
-      - kafka-exporter
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
     networks:
       - app_network
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+    <<: *restart-policy
+    depends_on:
+      kafka-exporter:
+        condition: service_healthy
 
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
     ports:
       - "3333:3000"
-    depends_on:
-      - kafka-exporter
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
@@ -131,6 +176,14 @@ services:
       - grafana-storage:/var/lib/grafana
     networks:
       - app_network
+    healthcheck:
+      <<: *healthcheck-defaults
+      test:
+        ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+    <<: *restart-policy
+    depends_on:
+      prometheus:
+        condition: service_healthy
 
   news_service:
     hostname: news_service
@@ -145,13 +198,21 @@ services:
       - KAFKA_BROKER=broker:29092
       - PORT=50051
       - SCHEMA_REGISTRY_URL=http://schema-registry:8081
-    depends_on:
-      - mongo_scrape_service
-      - broker
-      - kafka-ui
-      - schema-registry
     networks:
       - app_network
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "grpc-health-probe", "-addr=:50051"]
+      # Alternative HTTP health check if gRPC health check is not implemented
+      # test: ["CMD", "wget", "--spider", "-q", "http://localhost:50051/health"]
+    <<: *restart-policy
+    depends_on:
+      mongo_scrape_service:
+        condition: service_healthy
+      broker:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
 volumes:
   mongo_scrape_service_data:
   volume1:
@@ -160,94 +221,3 @@ volumes:
 networks:
   app_network:
     external: true
-
-  # kafka-ui:
-  #   container_name: kafka-ui
-  #   image: provectuslabs/kafka-ui:latest
-  #   ports:
-  #     - 9090:8080
-  #   environment:
-  #     DYNAMIC_CONFIG_ENABLED: true
-  #   depends_on:
-  #     - kafka-0
-  #     - kafka-1
-  #     - kafka-2
-  #   networks:
-  #     - kafka-net
-  #   volumes:
-  #     - ./kafka-ui/config.yml:/etc/kafkaui/dynamic_config.yaml
-
-  # kafka-setup:
-  #   image: bitnami/kafka:latest
-  #   depends_on:
-  #     - kafka-0
-  #     - kafka-1
-  #     - kafka-2
-  #   command: >
-  #     bash -c "
-  #       echo Waiting for Kafka to be ready...
-  #       sleep 30
-  #       echo Creating Kafka topics...
-  #       kafka-topics.sh --create --if-not-exists --bootstrap-server kafka-0:9092 --partitions 2 --replication-factor 3 --topic scraped-news
-  #       echo Kafka topics created.
-  #     "
-  #   networks:
-  #     - kafka-net
-
-  # gateway:
-  #   build: .
-  #   ports:
-  #     - "8080:8080"
-  #   depends_on:
-  #     - db
-  #     - news_service
-  #   environment:
-  #     - DATABASE_URL=postgresql://user:password@db:5432/gateway?schema=public
-
-  # db:
-  #   image: postgres:13
-  #   environment:
-  #     - POSTGRES_USER=user
-  #     - POSTGRES_PASSWORD=password
-  #     - POSTGRES_DB=gateway
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  # zookeeper:
-  #   image: confluentinc/cp-zookeeper:latest
-  #   environment:
-  #     ZOOKEEPER_CLIENT_PORT: 2181
-  #     ZOOKEEPER_TICK_TIME: 2000
-  #   networks:
-  #     - app_network
-  # kafka:
-  #   image: confluentinc/cp-kafka:latest
-  #   depends_on:
-  #     - zookeeper
-  #   ports:
-  #     - "9092:9092"
-  #   expose:
-  #     - 9092
-  #   environment:
-  #     ZOOKEEPER_SASL_ENABLED: "false"
-  #     KAFKA_BROKER_ID: 1
-  #     KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-  #     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-  #   networks:
-  #     - app_network
-
-  # on working
-  # news_service:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   environment:
-  #     MONGO_URI: mongo_scrape_service://mongo_scrape_service:27017/
-  #     KAFKA_BROKER: kafka:9092
-  #   depends_on:
-  #     - kafka-0
-  #     - kafka-1
-  #     - kafka-2
-  #     - mongo_scrape_service
-  #   networks:
-  #     - app_network
