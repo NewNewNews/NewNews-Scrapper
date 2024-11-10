@@ -91,10 +91,15 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
     def UpdateNews(self, request, context):
         url = request.url
 
+        current_news = self.collection.find_one({"url": url})
+
+        if current_news == None:
+            return news_service_pb2.UpdateNewsResponse(success=False, message = "Can't find news with URL")
+
         update_data = {
-            "data": request.data,
-            "category": request.category,
-            "date": request.date
+            "data": request.data if request.data != "" else current_news.data,
+            "category": request.category if request.category != "" else current_news.category, 
+            "date": request.date if request.date != "" else current_news.date
         }
        
         result = self.collection.update_one(
