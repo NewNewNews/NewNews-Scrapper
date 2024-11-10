@@ -23,6 +23,10 @@ central_categories = {
 
 
 def ScrapeNews(n, url, newServices, date="", dev_mode=False):
+    query = {"publisher": "PPTV"}
+    existedUrls = newServices.collection.distinct("url", query)
+    existedUrls = set(existedUrls)
+
     headers = {"User-Agent": "Mozilla/5.0"}
     res = requests.get(url, headers=headers)
     soup = bs(res.text, "lxml-xml")
@@ -47,8 +51,9 @@ def ScrapeNews(n, url, newServices, date="", dev_mode=False):
     count = 0
     for e in allURLs:
         try:
-            CallElement(e, headers, newServices, dev_mode)
-            count += 1
+            if e not in existedUrls:
+                CallElement(e, headers, newServices, dev_mode)
+                count += 1
         except Exception as e:
             print(f"Error with sitemap element: {e}")
             continue
