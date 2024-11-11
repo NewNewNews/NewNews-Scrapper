@@ -9,6 +9,6 @@ COPY . .
 
 EXPOSE 50051
 
-CMD ["python", "main.py"]
+CMD ["python", "-u", "main.py"]
 
 

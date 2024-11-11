@@ -19,6 +19,12 @@ from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.protobuf import ProtobufSerializer
 from proto import news_message_pb2
 
+import datetime
+import torch
+from pymilvus.model.hybrid import BGEM3EmbeddingFunction
+from pymilvus.model import DefaultEmbeddingFunction
+from sklearn.cluster import DBSCAN
+
 
 class NewsService(news_service_pb2_grpc.NewsServiceServicer):
     def __init__(self):
@@ -39,7 +45,97 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
             conf={"use.deprecated.format": True},
         )
         self.string_serializer = StringSerializer("utf8")
+        
+        device = "cuda:0" if torch.cuda.is_available() else "cpu"
+        print(f"Using device: {device}")
+        
+        """
+        self.embedding_function = BGEM3EmbeddingFunction(
+            model_name='BAAI/bge-m3', # Specify the model name
+            device=device, # Specify the device to use, e.g., 'cpu' or 'cuda:0'
+            use_fp16=False # Specify whether to use fp16. Set to `False` if `device` is `cpu`.
+        )
+        """
+        
+        self.embedding_function = DefaultEmbeddingFunction()
+        
+        self.clustering = DBSCAN()
 
+    def cluster(self):
+        print("START CLUSTERING...")
+        
+        # [x] update new key `datatime`: convert raw date to datetime in mongo
+        news_items = self.collection.find()
+        
+        for item in news_items:
+            date = item["date"]
+            # date = datetime.datetime(date)
+            date = date.split("T")[0]
+            date = datetime.datetime.strptime(date, "%Y-%m-%d")
+            self.collection.update_one({"_id": item["_id"]}, {"$set": {"datetime": date}})
+        
+        # [x] query today news
+        today = datetime.datetime.today()
+        
+        # exclude time 
+        today = today.replace(hour=0, minute=0, second=0, microsecond=0)
+        tomorrow = today + datetime.timedelta(days=1)
+        print(type(today), today)
+
+        news_items = self.collection.find({
+            "datetime":{
+                "$gte": today,
+                "$lt": tomorrow
+            }
+        })
+        
+        news_docs = []
+        news_data = []
+        for item in news_items:
+            news_docs.append(item)
+            news_data.append(item["data"][:512]) # make sure data context length is less than model context length
+        
+        print("len(news_data):", len(news_data))
+        
+        print("news_chars:", [len(news) for news in news_data])
+        
+        # [x] compute embeddings
+        embeddings = self.embedding_function.encode_documents(news_data)
+        # print("embeddings:", embeddings[0].shape, len(embeddings))
+        
+        # [x] compute dbscan
+        self.clustering.fit(embeddings)
+        # print(self.clustering.labels_)
+        
+        # [ ] update news with event id
+        for i, item in enumerate(news_docs):
+            # print(item["_id"], self.clustering.labels_[i])
+            item["event_id"] = self.clustering.labels_[i]
+            self.collection.update_one({"_id": item["_id"]}, {"$set": {"event_id": int(self.clustering.labels_[i])}})
+            
+            news_message = news_message_pb2.NewsMessage(
+                data=item["data"],
+                category=item["category"],
+                date=item["date"],
+                publisher=item["publisher"],
+                url=item["url"],
+            )
+            
+            topic = "news_event_topic"
+            key = f"{item['date']}_{item['event_id']:04d}"
+            try:
+                self.kafka_producer.produce(
+                    topic=topic,
+                    key=self.string_serializer(key),
+                    value=self.protobuf_serializer(
+                        news_message, SerializationContext(topic, MessageField.VALUE)
+                    ),
+                    on_delivery=self.delivery_report,
+                )
+                print(f"Message sent to Kafka: {key}")
+            except Exception as e:
+                print(f"Failed to send message to Kafka: {e}")
+                
     def delivery_report(err, msg, extra_info=None):
         if err is not None:
             print("Message delivery failed: {}".format(err))
@@ -74,7 +170,7 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
         except Exception as e:
             print(f"Error scraping news: {str(e)}")
             return news_service_pb2.ScrapeNewsResponse(success=False)
-
+        
     def CreateNewsElement(self):
         dailynews_url = get_current_url.getCurrentDailynews()
         thairath_url = get_current_url.getCurrentThairath()
@@ -87,6 +183,8 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
         thairath_scrape.ScrapeNews(count, thairath_url, self)
         pptv_scrape.ScrapeNews(count, pptv_url, self)
         self.kafka_producer.flush()
+        
+        self.cluster()
 
     def UpdateNews(self, request, context):
         url = request.url
