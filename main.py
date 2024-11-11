@@ -184,17 +184,17 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
             return news_service_pb2.ScrapeNewsResponse(success=False)
         
     def CreateNewsElement(self):
-        # dailynews_url = get_current_url.getCurrentDailynews()
-        # thairath_url = get_current_url.getCurrentThairath()
-        # pptv_url = get_current_url.getCurrentPPTV()
+        dailynews_url = get_current_url.getCurrentDailynews()
+        thairath_url = get_current_url.getCurrentThairath()
+        pptv_url = get_current_url.getCurrentPPTV()
         
-        # count = 3
+        count = 3
 
-        # self.kafka_producer.poll(0.0)
-        # dailynews_scrape.ScrapeNews(count, dailynews_url, self)
-        # thairath_scrape.ScrapeNews(count, thairath_url, self)
-        # pptv_scrape.ScrapeNews(count, pptv_url, self)
-        # self.kafka_producer.flush()
+        self.kafka_producer.poll(0.0)
+        dailynews_scrape.ScrapeNews(count, dailynews_url, self)
+        thairath_scrape.ScrapeNews(count, thairath_url, self)
+        pptv_scrape.ScrapeNews(count, pptv_url, self)
+        self.kafka_producer.flush()
         
         self.cluster()
 
