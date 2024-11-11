@@ -123,7 +123,7 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
         for i, item in enumerate(news_docs):
             # print(item["_id"], self.clustering.labels_[i])
             item["event_id"] = self.clustering.labels_[i]
-            self.collection.update_one({"_id": item["_id"]}, {"$set": {"event_id": int(self.clustering.labels_[i])}})
+            self.collection.update_one({"_id": item["_id"]}, {"$set": {"event_id": f"{self.clustering.labels_[i]:04d}"}})
             
             news_message = news_message_pb2.NewsMessage(
                 data=item["data"],
@@ -183,6 +183,8 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
             news_item.publisher = item["publisher"]
             news_item.url = item["url"]
             news_item.event_id = "-100"
+            if "event_id" in item:
+                news_item.event_id = item["event_id"]
         return response
 
     def ScrapeNews(self, request, context):
