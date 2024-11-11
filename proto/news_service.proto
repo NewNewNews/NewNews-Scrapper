@@ -39,6 +39,7 @@ message NewsItem {
   string date = 3;
   string publisher = 4;
   string url = 5;
+  string event_id = 6;
 }
 
 message UpdateNewsRequest {

@@ -156,6 +156,15 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
 
         if extra_info is not None:
             print("Additional info: {}".format(extra_info))
+            
+    def mock_data(self):
+        print("MOCK DATA...")
+        with open("mock_data.json", "r") as file:
+            data = json.load(file)
+            for item in data:
+                if self.collection.find_one({"url": item["url"]}):
+                    continue
+                self.collection.insert_one(item)
 
     def GetNews(self, request, context):
         query = {}
@@ -173,6 +182,7 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
             news_item.date = item["date"]
             news_item.publisher = item["publisher"]
             news_item.url = item["url"]
+            news_item.event_id = "-100"
         return response
 
     def ScrapeNews(self, request, context):
@@ -184,17 +194,19 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
             return news_service_pb2.ScrapeNewsResponse(success=False)
         
     def CreateNewsElement(self):
-        dailynews_url = get_current_url.getCurrentDailynews()
-        thairath_url = get_current_url.getCurrentThairath()
-        pptv_url = get_current_url.getCurrentPPTV()
+        # dailynews_url = get_current_url.getCurrentDailynews()
+        # thairath_url = get_current_url.getCurrentThairath()
+        # pptv_url = get_current_url.getCurrentPPTV()
         
-        count = 3
+        # count = 3
 
-        self.kafka_producer.poll(0.0)
-        dailynews_scrape.ScrapeNews(count, dailynews_url, self)
-        thairath_scrape.ScrapeNews(count, thairath_url, self)
-        pptv_scrape.ScrapeNews(count, pptv_url, self)
-        self.kafka_producer.flush()
+        # self.kafka_producer.poll(0.0)
+        # dailynews_scrape.ScrapeNews(count, dailynews_url, self)
+        # thairath_scrape.ScrapeNews(count, thairath_url, self)
+        # pptv_scrape.ScrapeNews(count, pptv_url, self)
+        # self.kafka_producer.flush()
+        
+        self.mock_data()
         
         self.cluster()
 
