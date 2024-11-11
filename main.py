@@ -105,7 +105,19 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
         
         # [x] compute dbscan
         self.clustering.fit(embeddings)
-        # print(self.clustering.labels_)
+        # print(self.clustering.labels_) # [-1, -1, 0, 0, 1, 1, 1]
+        
+        # create pair of news and cluster labels
+        # sort docs by cluster labels
+        news_docs = sorted(zip(news_docs, self.clustering.labels_), key=lambda x: x[1])
+        # print("news_docs:", [label for _, label in news_docs])
+        
+        # sort labels
+        self.clustering.labels_ = sorted(self.clustering.labels_)
+        # print(self.clustering.labels_) # [-1, -1, 0, 0, 1, 1, 1]
+        
+        # sort news_docs by cluster labels
+        news_docs = [doc for doc, _ in news_docs]
         
         # [ ] update news with event id
         for i, item in enumerate(news_docs):
@@ -122,7 +134,7 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
             )
             
             topic = "news_event_topic"
-            key = f"{item['date']}_{item['event_id']:04d}"
+            key = f"{item['event_id']:04d}_{item['date']}"
             try:
                 self.kafka_producer.produce(
                     topic=topic,
@@ -172,17 +184,17 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
             return news_service_pb2.ScrapeNewsResponse(success=False)
         
     def CreateNewsElement(self):
-        dailynews_url = get_current_url.getCurrentDailynews()
-        thairath_url = get_current_url.getCurrentThairath()
-        pptv_url = get_current_url.getCurrentPPTV()
+        # dailynews_url = get_current_url.getCurrentDailynews()
+        # thairath_url = get_current_url.getCurrentThairath()
+        # pptv_url = get_current_url.getCurrentPPTV()
         
-        count = 3
+        # count = 3
 
-        self.kafka_producer.poll(0.0)
-        dailynews_scrape.ScrapeNews(count, dailynews_url, self)
-        thairath_scrape.ScrapeNews(count, thairath_url, self)
-        pptv_scrape.ScrapeNews(count, pptv_url, self)
-        self.kafka_producer.flush()
+        # self.kafka_producer.poll(0.0)
+        # dailynews_scrape.ScrapeNews(count, dailynews_url, self)
+        # thairath_scrape.ScrapeNews(count, thairath_url, self)
+        # pptv_scrape.ScrapeNews(count, pptv_url, self)
+        # self.kafka_producer.flush()
         
         self.cluster()
 
@@ -226,8 +238,10 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     news_service_pb2_grpc.add_NewsServiceServicer_to_server(NewsService(), server)
-    server.add_insecure_port(f"[::]:{os.getenv('PORT', '50051')}")
+    port = os.getenv("PORT", "50051")
+    server.add_insecure_port(f"[::]:{port}")
     server.start()
+    print(f"Server started on port {port}")
     server.wait_for_termination()
 
 
