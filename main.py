@@ -65,7 +65,7 @@ class NewsService(news_service_pb2_grpc.NewsServiceServicer):
         print("START CLUSTERING...")
         
         # [x] update new key `datatime`: convert raw date to datetime in mongo
-        news_items = self.collection.find()
+        news_items = self.collection.find() # FIXME: query only today news
         
         for item in news_items:
             date = item["date"]
